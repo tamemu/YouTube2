@@ -2,111 +2,180 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1", user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>YouTubeプレイヤー（軽量高速版）</title>
   <style>
-    body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
-    #controls {
-    background: rgba(17,17,17,0.85);
-    padding: 10px 8px;
-    border-radius: 12px;
-    margin: 12px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-    font-size: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: stretch;
-    z-index: 10;
-}
-
-.control-left, .control-right {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
-select, input, button {
-    font-size: 17px;
-    padding: 10px 8px;
-    border-radius: 7px;
-    border: none;
-    margin: 0 0 5px 0;
-    background: rgba(40,40,40,0.96);
-    color: #e0f8ff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.09);
-    outline: none;
-}
-button {
-    background: linear-gradient(90deg, #023C40 0%, #178582 100%);
-    color: #fff;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-button:hover {
-    background: linear-gradient(90deg, #178582 0%, #023C40 100%);
-}
-
-#sheetVideoList, #videoUrl {
-    width: 100%;
-    min-width: 140px;
-    max-width: 320px;
-}
-
-@media (max-width: 600px) {
-    #controls {
-        flex-direction: column;
-        gap: 16px;
-        font-size: 19px;
-        padding: 14px 4px;
-        margin: 5px;
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
     }
+    #container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      padding: 10px;
+    }
+    .video-thumb {
+      position: relative;
+      background: #222;
+      border: 1px solid #444;
+      padding-top: 56.25%;
+      cursor: pointer;
+      overflow: visible;
+    }
+    .video-thumb img, .video-thumb iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .remove-btn, .move-btn {
+      position: absolute;
+      font-size: 12px;
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    .remove-btn {
+      top: 2px; right: 2px;
+      background: red; color: #fff;
+    }
+    .move-btn {
+      left: 2px;
+      width: 24px;
+      background: #444; color: #fff;
+    }
+    .move-up { top: 2px; }
+    .move-down { top: 24px; }
+    .volume-slider {
+      position: absolute;
+      left: 40px;
+      top: 4px;
+      width: 80px;
+      z-index: 10;
+    }
+
+    #showPopupBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 9999;
+      background: #222;
+      color: white;
+      padding: 10px 14px;
+      border: 1px solid #555;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #popupOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9998;
+    }
+
+    #popupControls {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      border: 1px solid #444;
+      padding: 16px;
+      z-index: 9999;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 10px #000;
+    }
+
+    #popupClose {
+      background: red;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 16px;
+    }
+
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+    }
+
     .control-left, .control-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    select, input, button {
+      font-size: 14px;
+      padding: 6px;
+      min-width: 120px;
+      flex: 1;
+    }
+
+    #sheetVideoList, #videoUrl {
+      width: 100%;
+    }
+
+    @media (max-width: 600px) {
+      #controls {
+        font-size: 16px;
+      }
+      select, input, button {
+        font-size: 16px;
+        padding: 10px;
+        min-width: unset;
+      }
+      .control-left, .control-right {
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+      }
     }
-    select, input, button {
-        width: 100%;
-        font-size: 20px;
-        min-height: 44px;
-        padding: 14px 10px;
-    }
-    #sheetVideoList, #videoUrl {
-        width: 100% !important;
-        max-width: unset;
-    }
-}
-    
   </style>
 </head>
 <body>
-  <div id="controls">
-    <div class="control-left">
-      <select id="mainCategory" onchange="filterVideos()"><option value="">大分類</option></select>
-      <select id="subCategory" onchange="filterVideos()"><option value="">小分類</option></select>
-      <button onclick="clearFilters()">全解除</button>
-      <select id="sheetVideoList"></select>
-      <button onclick="addSelectedVideos()">動画を追加</button>
-      <select id="layoutSelect">
-        <option value="1">1×1</option>
-        <option value="2">2×2</option>
-        <option value="3">3×3</option>
-        <option value="4">4×4</option>
-      </select>
-    </div>
-    <div class="control-right">
-      <input id="videoUrl" placeholder="YouTubeのURL">
-      <button onclick="addVideoByUrl()">URL追加</button>
+  <button id="showPopupBtn">設定</button>
+  <div id="popupOverlay"></div>
+  <div id="popupControls">
+    <button id="popupClose">×</button>
+    <div id="controls">
+      <div class="control-left">
+        <select id="mainCategory" onchange="filterVideos()"><option value="">大分類</option></select>
+        <select id="subCategory" onchange="filterVideos()"><option value="">小分類</option></select>
+        <button onclick="clearFilters()">全解除</button>
+        <select id="sheetVideoList"></select>
+        <button onclick="addSelectedVideos()">動画を追加</button>
+        <select id="layoutSelect">
+          <option value="1">1×1</option>
+          <option value="2">2×2</option>
+          <option value="3">3×3</option>
+          <option value="4">4×4</option>
+        </select>
+      </div>
+      <div class="control-right">
+        <input id="videoUrl" placeholder="YouTubeのURL">
+        <button onclick="addVideoByUrl()">URL追加</button>
+      </div>
     </div>
   </div>
   <div id="container"></div>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv",
-         // MAX_VIDEOS = 9,
           c = document.getElementById("container");
     let videoData = [];
 
@@ -202,25 +271,15 @@ button:hover {
       saveState();
     };
 
-    // グリッドレイアウトのカラム数を保存
     const saveCols = cols => localStorage.setItem("videoCols", cols);
-    // 保存されたカラム数を取得
     const loadCols = () => Number(localStorage.getItem("videoCols") || 1);
-    
-    const applyLayout = cols => { c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-                                 saveCols(cols); //カラム数を保存
-                                };
+    const applyLayout = cols => { c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; saveCols(cols); };
 
-    // セレクトボックス取得
-    const layoutSelect = document.getElementById("layoutSelect");
-
-    // セレクト変更時にレイアウトを適用し保存
-    layoutSelect.onchange = function() {
+    layoutSelect.onchange = () => {
       const cols = Number(layoutSelect.value);
       applyLayout(cols);
-      saveCols(cols);
-    };    
-    
+    };
+
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
     const loadState = () => JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(id => createThumbnail(id));
 
@@ -231,12 +290,25 @@ button:hover {
     };
     const getSavedVolume = id => JSON.parse(localStorage.getItem("videoVolumes") || "{}")[id] ?? 100;
 
-    // ページロード時にセレクトボックスの値も復元
     window.onload = () => {
       loadSpreadsheet();
       loadState();
       applyLayout(loadCols());
-      layoutSelect.value = loadCols(); // セレクトの表示も復元
+      layoutSelect.value = loadCols();
+    };
+
+    // ポップアップ開閉
+    document.getElementById("showPopupBtn").onclick = () => {
+      document.getElementById("popupOverlay").style.display = "block";
+      document.getElementById("popupControls").style.display = "block";
+    };
+    document.getElementById("popupClose").onclick = () => {
+      document.getElementById("popupOverlay").style.display = "none";
+      document.getElementById("popupControls").style.display = "none";
+    };
+    document.getElementById("popupOverlay").onclick = () => {
+      document.getElementById("popupOverlay").style.display = "none";
+      document.getElementById("popupControls").style.display = "none";
     };
   </script>
 </body>

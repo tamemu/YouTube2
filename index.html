@@ -107,7 +107,7 @@
         if (box.querySelector("iframe")) return;
         const iframe = Object.assign(document.createElement("iframe"), {
           src: `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`,
-          frameBorder: 0, allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture", allowFullscreen: true
+          frameBorder: 3, allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture", allowFullscreen: true
         });
         const slider = Object.assign(document.createElement("input"), {
           type: "range", min: 0, max: 100, value: getSavedVolume(id), className: "volume-slider"
@@ -149,7 +149,7 @@
     };
     const getSavedVolume = id => JSON.parse(localStorage.getItem("videoVolumes") || "{}")[id] ?? 100;
 
-    window.onload = () => (loadSpreadsheet(), loadState(), applyLayout(2));
+    window.onload = () => (loadSpreadsheet(), loadState(), applyLayout(1));
   </script>
 </body>
 </html>

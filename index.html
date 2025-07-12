@@ -137,6 +137,11 @@
       saveState();
     };
 
+    // グリッドレイアウトのカラム数を保存
+    const saveCols = cols => localStorage.setItem("videoCols", cols);
+    // 保存されたカラム数を取得
+    const loadCols = () => Number(localStorage.getItem("videoCols") || 1);
+    
     const applyLayout = cols => c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
@@ -149,7 +154,7 @@
     };
     const getSavedVolume = id => JSON.parse(localStorage.getItem("videoVolumes") || "{}")[id] ?? 100;
 
-    window.onload = () => (loadSpreadsheet(), loadState(), applyLayout(1));
+    window.onload = () => (loadSpreadsheet(), loadState(), applyLayout(loadCols()));
   </script>
 </body>
 </html>

@@ -28,9 +28,12 @@
       <button onclick="clearFilters()">全解除</button>
       <select id="sheetVideoList"></select>
       <button onclick="addSelectedVideos()">動画を追加</button>
-      <button onclick="applyLayout(1)">1x1</button>
-      <button onclick="applyLayout(2)">2x2</button>
-      <button onclick="applyLayout(3)">3x3</button>
+      <select id="layoutSelect">
+        <option value="1">1×1</option>
+        <option value="2">2×2</option>
+        <option value="3">3×3</option>
+        <option value="4">4×4</option>
+      </select>
     </div>
     <div class="control-right">
       <input id="videoUrl" placeholder="YouTubeのURL">
@@ -146,6 +149,16 @@
                                  saveCols(cols); //カラム数を保存
                                 };
 
+    // セレクトボックス取得
+    const layoutSelect = document.getElementById("layoutSelect");
+
+    // セレクト変更時にレイアウトを適用し保存
+    layoutSelect.onchange = function() {
+      const cols = Number(layoutSelect.value);
+      applyLayout(cols);
+      saveCols(cols);
+    };    
+    
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
     const loadState = () => JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(id => createThumbnail(id));
 
@@ -156,7 +169,13 @@
     };
     const getSavedVolume = id => JSON.parse(localStorage.getItem("videoVolumes") || "{}")[id] ?? 100;
 
-    window.onload = () => (loadSpreadsheet(), loadState(), applyLayout(loadCols()));
+    // ページロード時にセレクトボックスの値も復元
+    window.onload = () => {
+      loadSpreadsheet();
+      loadState();
+      applyLayout(loadCols());
+      layoutSelect.value = cols; // セレクトの表示も復元
+    };
   </script>
 </body>
 </html>

@@ -142,7 +142,9 @@
     // 保存されたカラム数を取得
     const loadCols = () => Number(localStorage.getItem("videoCols") || 1);
     
-    const applyLayout = cols => c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    const applyLayout = cols => { c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                                 saveCols(cols); //カラム数を保存
+                                };
 
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
     const loadState = () => JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(id => createThumbnail(id));

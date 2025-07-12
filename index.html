@@ -2,46 +2,82 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1", user-scalable=no">
   <title>YouTubeプレイヤー（軽量高速版）</title>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
-    #controls { padding: 6px 10px; background: #111; font-size: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
-    .control-left, .control-right { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-    select, input, button { font-size: 12px; padding: 3px; }
-    #sheetVideoList, #videoUrl { width: 200px; }
-    #container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px; }
-    .video-thumb { position: relative; background: #222; border: 1px solid #444; padding-top: 56.25%; cursor: pointer; overflow: visible; }
-    .video-thumb img, .video-thumb iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-    .remove-btn, .move-btn { position: absolute; font-size: 12px; border: none; padding: 2px; cursor: pointer; z-index: 10; }
-    .remove-btn { top: 2px; right: 2px; background: red; color: #fff; }
-    .move-btn { left: 2px; width: 24px; background: #444; color: #fff; }
-    .move-up { top: 2px; }
-    .move-down { top: 24px; }
-    .volume-slider { position: absolute; left: 40px; top: 4px; width: 80px; z-index: 10; }
-
-    @media (max-width: 600px) {
-  #controls {
-    flex-direction: column;
-    gap: 14px;
-    font-size: 18px;
-    padding: 14px 6px;
-  }
-  .control-left, .control-right {
-    flex-direction: column;
-    gap: 10px;
-    align-items: stretch;
-  }
-  select, input, button {
-    font-size: 18px;
+    #controls {
+    background: rgba(17,17,17,0.85);
     padding: 10px 8px;
+    border-radius: 12px;
+    margin: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    font-size: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+    z-index: 10;
+}
+
+.control-left, .control-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+select, input, button {
+    font-size: 17px;
+    padding: 10px 8px;
+    border-radius: 7px;
+    border: none;
+    margin: 0 0 5px 0;
+    background: rgba(40,40,40,0.96);
+    color: #e0f8ff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+    outline: none;
+}
+button {
+    background: linear-gradient(90deg, #023C40 0%, #178582 100%);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+button:hover {
+    background: linear-gradient(90deg, #178582 0%, #023C40 100%);
+}
+
+#sheetVideoList, #videoUrl {
     width: 100%;
-    min-height: 42px;
-    box-sizing: border-box;
-  }
-  #sheetVideoList, #videoUrl {
-    width: 100% !important;
-  }
+    min-width: 140px;
+    max-width: 320px;
+}
+
+@media (max-width: 600px) {
+    #controls {
+        flex-direction: column;
+        gap: 16px;
+        font-size: 19px;
+        padding: 14px 4px;
+        margin: 5px;
+    }
+    .control-left, .control-right {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    select, input, button {
+        width: 100%;
+        font-size: 20px;
+        min-height: 44px;
+        padding: 14px 10px;
+    }
+    #sheetVideoList, #videoUrl {
+        width: 100% !important;
+        max-width: unset;
+    }
 }
     
   </style>

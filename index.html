@@ -41,7 +41,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv",
-          MAX_VIDEOS = 9,
+         // MAX_VIDEOS = 9,
           c = document.getElementById("container");
     let videoData = [];
 
@@ -82,7 +82,7 @@
 
     const addVideoByUrl = (inputUrl = null) => {
       const id = extractVideoID(inputUrl || videoUrl.value);
-      if (!id || c.children.length >= MAX_VIDEOS) return alert("無効URLまたは上限");
+      if (!id) return alert("無効なURLです");
       createThumbnail(id);
       videoUrl.value = "";
       saveState();

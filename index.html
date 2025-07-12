@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTubeプレイヤー（軽量高速版）</title>
+  <title>YouTubeプレイヤー（設定ポップアップ）</title>
   <style>
     body {
       margin: 0;
@@ -11,11 +11,84 @@
       color: #fff;
       font-family: sans-serif;
     }
+    #topBar {
+      width: 100%;
+      background: #111;
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      text-align: right;
+    }
+    #showPopupBtn {
+      background: #222;
+      color: white;
+      padding: 10px 14px;
+      border: 1px solid #555;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #popupOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9998;
+    }
+    #popupControls {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      border: 1px solid #444;
+      padding: 16px;
+      z-index: 9999;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 10px #000;
+    }
+    #popupClose {
+      background: red;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 16px;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .control-left, .control-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    select, input, button {
+      font-size: 14px;
+      padding: 6px;
+      min-width: 120px;
+      flex: 1;
+    }
+    #sheetVideoList, #videoUrl {
+      width: 100%;
+    }
     #container {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 10px;
+      margin-top: 60px;
     }
     .video-thumb {
       position: relative;
@@ -38,15 +111,8 @@
       cursor: pointer;
       z-index: 10;
     }
-    .remove-btn {
-      top: 2px; right: 2px;
-      background: red; color: #fff;
-    }
-    .move-btn {
-      left: 2px;
-      width: 24px;
-      background: #444; color: #fff;
-    }
+    .remove-btn { top: 2px; right: 2px; background: red; color: #fff; }
+    .move-btn { left: 2px; width: 24px; background: #444; color: #fff; }
     .move-up { top: 2px; }
     .move-down { top: 24px; }
     .volume-slider {
@@ -56,99 +122,13 @@
       width: 80px;
       z-index: 10;
     }
-
-    #showPopupBtn {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 9999;
-      background: #222;
-      color: white;
-      padding: 10px 14px;
-      border: 1px solid #555;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    #popupOverlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 9998;
-    }
-
-    #popupControls {
-      display: none;
-      position: fixed;
-      top: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111;
-      border: 1px solid #444;
-      padding: 16px;
-      z-index: 9999;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 0 10px #000;
-    }
-
-    #popupClose {
-      background: red;
-      color: white;
-      border: none;
-      padding: 6px 10px;
-      cursor: pointer;
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 16px;
-    }
-
-    #controls {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      font-size: 14px;
-    }
-
-    .control-left, .control-right {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    select, input, button {
-      font-size: 14px;
-      padding: 6px;
-      min-width: 120px;
-      flex: 1;
-    }
-
-    #sheetVideoList, #videoUrl {
-      width: 100%;
-    }
-
-    @media (max-width: 600px) {
-      #controls {
-        font-size: 16px;
-      }
-      select, input, button {
-        font-size: 16px;
-        padding: 10px;
-        min-width: unset;
-      }
-      .control-left, .control-right {
-        flex-direction: column;
-        align-items: stretch;
-      }
-    }
   </style>
 </head>
 <body>
-  <button id="showPopupBtn">設定</button>
+  <div id="topBar">
+    <button id="showPopupBtn">設定を開く</button>
+  </div>
+
   <div id="popupOverlay"></div>
   <div id="popupControls">
     <button id="popupClose">×</button>
@@ -170,13 +150,20 @@
         <input id="videoUrl" placeholder="YouTubeのURL">
         <button onclick="addVideoByUrl()">URL追加</button>
       </div>
+      <div style="margin-top:10px; color: #ccc;">
+        <label><input type="checkbox" id="toggleRemoveBtn" checked> 削除ボタンを表示</label><br>
+        <label><input type="checkbox" id="toggleMoveBtn" checked> 移動ボタンを表示</label><br>
+        <label><input type="checkbox" id="toggleVolumeSlider" checked> 音量スライダーを表示</label>
+      </div>
     </div>
   </div>
+
   <div id="container"></div>
+
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv",
-          c = document.getElementById("container");
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
+    const c = document.getElementById("container");
     let videoData = [];
 
     const extractVideoID = url => (url.match(/(?:v=|\/)([\w-]{11})(?:[&?]|$)/) || [])[1] || null;
@@ -227,7 +214,11 @@
       box.className = "video-thumb";
       box.dataset.videoId = id;
 
-      const img = Object.assign(document.createElement("img"), { src: `https://img.youtube.com/vi/${id}/hqdefault.jpg`, loading: "lazy" });
+      const img = Object.assign(document.createElement("img"), {
+        src: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+        loading: "lazy"
+      });
+
       const close = Object.assign(document.createElement("button"), { className: "remove-btn", textContent: "×" });
       close.onclick = e => (e.stopPropagation(), box.remove(), saveState());
 
@@ -241,28 +232,62 @@
         if (box.querySelector("iframe")) return;
         const iframe = Object.assign(document.createElement("iframe"), {
           src: `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`,
-          frameBorder: 3, allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture", allowFullscreen: true
+          frameBorder: 0,
+          allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture",
+          allowFullscreen: true
         });
+
         const slider = Object.assign(document.createElement("input"), {
-          type: "range", min: 0, max: 100, value: getSavedVolume(id), className: "volume-slider"
+          type: "range",
+          min: 0,
+          max: 100,
+          value: getSavedVolume(id),
+          className: "volume-slider"
         });
+
         box.innerHTML = "";
         box.append(close, up, down, iframe, slider);
+
         new YT.Player(iframe, {
           events: {
             onReady: e => {
-              e.target.setPlaybackRate(2);
               e.target.setVolume(slider.value);
-              slider.oninput = () => (e.target.setVolume(slider.value), saveVolume(id, slider.value));
+              slider.oninput = () => {
+                e.target.setVolume(slider.value);
+                saveVolume(id, slider.value);
+              };
             }
           }
         });
+
+        applyVisibility(box);
         saveState();
       };
 
       box.append(img, close, up, down);
+      applyVisibility(box);
       c.appendChild(box);
     };
+
+    const applyVisibility = (box) => {
+      const close = box.querySelector(".remove-btn");
+      const up = box.querySelector(".move-up");
+      const down = box.querySelector(".move-down");
+      const slider = box.querySelector(".volume-slider");
+
+      if (close) close.style.display = document.getElementById("toggleRemoveBtn").checked ? "block" : "none";
+      if (up && down) {
+        const show = document.getElementById("toggleMoveBtn").checked;
+        up.style.display = down.style.display = show ? "block" : "none";
+      }
+      if (slider) slider.style.display = document.getElementById("toggleVolumeSlider").checked ? "block" : "none";
+    };
+
+    ["toggleRemoveBtn", "toggleMoveBtn", "toggleVolumeSlider"].forEach(id => {
+      document.getElementById(id).onchange = () => {
+        document.querySelectorAll(".video-thumb").forEach(applyVisibility);
+      };
+    });
 
     const moveBox = (box, dir) => {
       const boxes = [...c.children], i = boxes.indexOf(box), j = i + dir;
@@ -274,15 +299,10 @@
     const saveCols = cols => localStorage.setItem("videoCols", cols);
     const loadCols = () => Number(localStorage.getItem("videoCols") || 1);
     const applyLayout = cols => { c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; saveCols(cols); };
-
-    layoutSelect.onchange = () => {
-      const cols = Number(layoutSelect.value);
-      applyLayout(cols);
-    };
+    layoutSelect.onchange = () => applyLayout(Number(layoutSelect.value));
 
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
     const loadState = () => JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(id => createThumbnail(id));
-
     const saveVolume = (id, vol) => {
       const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
       v[id] = vol;
@@ -297,7 +317,6 @@
       layoutSelect.value = loadCols();
     };
 
-    // ポップアップ開閉
     document.getElementById("showPopupBtn").onclick = () => {
       document.getElementById("popupOverlay").style.display = "block";
       document.getElementById("popupControls").style.display = "block";

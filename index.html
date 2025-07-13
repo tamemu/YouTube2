@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTubeプレイヤー（操作ボタン対応）</title>
+  <title>YouTubeプレイヤー（保存・サムネ対応）</title>
   <style>
     body {
       margin: 0;
@@ -100,6 +100,7 @@
       overflow: hidden;
       cursor: pointer;
     }
+    .video-thumb img,
     .video-thumb iframe {
       position: absolute;
       top: 0;
@@ -124,7 +125,9 @@
       position: absolute;
       left: 2px;
       bottom: 2px;
-      width: 80%;
+      width: 60%;
+      height: 16px;
+      z-index: 11;
     }
   </style>
 </head>
@@ -192,10 +195,13 @@
       div.className = "video-thumb";
       div.dataset.videoId = id;
 
+      const img = document.createElement("img");
+      img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+
       const closeBtn = document.createElement("button");
       closeBtn.textContent = "×";
       closeBtn.className = "btn btn-close";
-      closeBtn.onclick = e => { e.stopPropagation(); div.remove(); };
+      closeBtn.onclick = e => { e.stopPropagation(); div.remove(); saveState(); };
 
       const upBtn = document.createElement("button");
       upBtn.textContent = "↑";
@@ -211,10 +217,10 @@
       volume.type = "range";
       volume.min = 0;
       volume.max = 100;
-      volume.value = 100;
+      volume.value = getSavedVolume(id);
       volume.className = "volume-slider";
 
-      div.append(closeBtn, upBtn, downBtn, volume);
+      div.append(img, closeBtn, upBtn, downBtn, volume);
       updateVisibility(div);
 
       div.onclick = () => {
@@ -223,18 +229,23 @@
         iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
         iframe.allow = "autoplay; encrypted-media";
         iframe.allowFullscreen = true;
+        img.remove();
         div.appendChild(iframe);
         const player = new YT.Player(iframe, {
           events: {
             onReady: e => {
               e.target.setVolume(volume.value);
-              volume.oninput = () => e.target.setVolume(volume.value);
+              volume.oninput = () => {
+                e.target.setVolume(volume.value);
+                saveVolume(id, volume.value);
+              };
             }
           }
         });
       };
 
       container.appendChild(div);
+      saveState();
     }
 
     function moveVideo(div, dir, e) {
@@ -244,6 +255,7 @@
       const j = i + dir;
       if (j >= 0 && j < boxes.length) {
         container.insertBefore(div, dir > 0 ? boxes[j].nextSibling : boxes[j]);
+        saveState();
       }
     }
 
@@ -259,6 +271,27 @@
         document.querySelectorAll(".video-thumb").forEach(updateVisibility);
       };
     });
+
+    function saveState() {
+      const ids = [...document.querySelectorAll(".video-thumb")].map(div => div.dataset.videoId);
+      localStorage.setItem("videoThumbs", JSON.stringify(ids));
+    }
+
+    function loadState() {
+      const saved = JSON.parse(localStorage.getItem("videoThumbs") || "[]");
+      saved.forEach(id => createVideo(id));
+    }
+
+    function saveVolume(id, vol) {
+      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      v[id] = vol;
+      localStorage.setItem("videoVolumes", JSON.stringify(v));
+    }
+
+    function getSavedVolume(id) {
+      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      return v[id] ?? 100;
+    }
 
     function addVideoByUrl() {
       const url = document.getElementById("videoUrl").value;
@@ -331,6 +364,7 @@
 
     window.onload = () => {
       loadSpreadsheet();
+      loadState();
     };
   </script>
 </body>

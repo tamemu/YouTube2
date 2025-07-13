@@ -227,6 +227,7 @@
         if (div.querySelector("iframe")) return;
         const iframe = document.createElement("iframe");
         iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
+        iframe.frameBorder = 0;
         iframe.allow = "autoplay; encrypted-media";
         iframe.allowFullscreen = true;
         img.remove();

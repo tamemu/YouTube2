@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTubeプレイヤー（4×4対応）</title>
+  <title>YouTubeプレイヤー（操作ボタン対応）</title>
   <style>
     body {
       margin: 0;
@@ -97,6 +97,8 @@
       background: #222;
       border: 1px solid #444;
       padding-top: 56.25%;
+      overflow: hidden;
+      cursor: pointer;
     }
     .video-thumb iframe {
       position: absolute;
@@ -104,6 +106,25 @@
       left: 0;
       width: 100%;
       height: 100%;
+    }
+    .btn {
+      position: absolute;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px;
+    }
+    .btn-close { top: 2px; right: 2px; background: red; }
+    .btn-up { top: 2px; left: 2px; }
+    .btn-down { top: 28px; left: 2px; }
+    .volume-slider {
+      position: absolute;
+      left: 2px;
+      bottom: 2px;
+      width: 80%;
     }
   </style>
 </head>
@@ -139,6 +160,11 @@
         <input id="videoUrl" placeholder="YouTubeのURL">
         <button onclick="addVideoByUrl()">URL追加</button>
       </div>
+      <div class="control-group">
+        <label><input type="checkbox" id="toggleRemoveBtn" checked> 削除ボタン</label>
+        <label><input type="checkbox" id="toggleMoveBtn" checked> 移動ボタン</label>
+        <label><input type="checkbox" id="toggleVolumeSlider" checked> 音量スライダー</label>
+      </div>
     </div>
   </div>
 
@@ -151,6 +177,9 @@
     const videoList = document.getElementById("videoList");
     const mainCategory = document.getElementById("mainCategory");
     const subCategory = document.getElementById("subCategory");
+    const toggleRemoveBtn = document.getElementById("toggleRemoveBtn");
+    const toggleMoveBtn = document.getElementById("toggleMoveBtn");
+    const toggleVolumeSlider = document.getElementById("toggleVolumeSlider");
     let videoData = [];
 
     function extractVideoID(url) {
@@ -161,15 +190,75 @@
     function createVideo(id) {
       const div = document.createElement("div");
       div.className = "video-thumb";
+      div.dataset.videoId = id;
 
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
-      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-      iframe.allowFullscreen = true;
+      const closeBtn = document.createElement("button");
+      closeBtn.textContent = "×";
+      closeBtn.className = "btn btn-close";
+      closeBtn.onclick = e => { e.stopPropagation(); div.remove(); };
 
-      div.appendChild(iframe);
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "↑";
+      upBtn.className = "btn btn-up";
+      upBtn.onclick = e => moveVideo(div, -1, e);
+
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "↓";
+      downBtn.className = "btn btn-down";
+      downBtn.onclick = e => moveVideo(div, 1, e);
+
+      const volume = document.createElement("input");
+      volume.type = "range";
+      volume.min = 0;
+      volume.max = 100;
+      volume.value = 100;
+      volume.className = "volume-slider";
+
+      div.append(closeBtn, upBtn, downBtn, volume);
+      updateVisibility(div);
+
+      div.onclick = () => {
+        if (div.querySelector("iframe")) return;
+        const iframe = document.createElement("iframe");
+        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
+        iframe.allow = "autoplay; encrypted-media";
+        iframe.allowFullscreen = true;
+        div.appendChild(iframe);
+        const player = new YT.Player(iframe, {
+          events: {
+            onReady: e => {
+              e.target.setVolume(volume.value);
+              volume.oninput = () => e.target.setVolume(volume.value);
+            }
+          }
+        });
+      };
+
       container.appendChild(div);
     }
+
+    function moveVideo(div, dir, e) {
+      e.stopPropagation();
+      const boxes = [...container.children];
+      const i = boxes.indexOf(div);
+      const j = i + dir;
+      if (j >= 0 && j < boxes.length) {
+        container.insertBefore(div, dir > 0 ? boxes[j].nextSibling : boxes[j]);
+      }
+    }
+
+    function updateVisibility(div) {
+      div.querySelector(".btn-close").style.display = toggleRemoveBtn.checked ? "block" : "none";
+      div.querySelector(".btn-up").style.display = div.querySelector(".btn-down").style.display = toggleMoveBtn.checked ? "block" : "none";
+      const slider = div.querySelector(".volume-slider");
+      if (slider) slider.style.display = toggleVolumeSlider.checked ? "block" : "none";
+    }
+
+    [toggleRemoveBtn, toggleMoveBtn, toggleVolumeSlider].forEach(input => {
+      input.onchange = () => {
+        document.querySelectorAll(".video-thumb").forEach(updateVisibility);
+      };
+    });
 
     function addVideoByUrl() {
       const url = document.getElementById("videoUrl").value;

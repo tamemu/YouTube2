@@ -56,12 +56,12 @@
       background: red;
       color: white;
       border: none;
-      padding: 6px 10px;
+      padding: var(--close-btn-padding, 6px 10px);
       cursor: pointer;
       position: absolute;
       top: 8px;
       right: 8px;
-      font-size: 16px;
+      font-size: var(--close-btn-font, 16px);
     }
     #controls {
       display: flex;
@@ -105,23 +105,50 @@
     }
     .remove-btn, .move-btn {
       position: absolute;
-      font-size: 12px;
+      font-size: var(--move-btn-font, 14px);
       border: none;
-      padding: 2px;
+      padding: var(--move-btn-padding, 4px 0);
       cursor: pointer;
       z-index: 10;
+      width: var(--move-btn-width, 27px);
+      height: var(--move-btn-height, 27px);
+      display: flex; align-items: center; justify-content: center;
     }
     .remove-btn { top: 2px; right: 2px; background: red; color: #fff; }
-    .move-btn { left: 2px; width: 24px; background: #444; color: #fff; }
+    .move-btn { left: 2px; background: #444; color: #fff; }
     .move-up { top: 2px; }
-    .move-down { top: 24px; }
+    .move-down { top: calc(var(--move-btn-height, 27px) + 4px); }
     .volume-slider {
       position: absolute;
       left: 40px;
       top: 4px;
-      width: 80px;
+      width: var(--slider-width, 80px);
+      height: var(--slider-height, 24px);
       z-index: 10;
+      accent-color: #178582;
     }
+
+    /* デフォルト: 画面幅でサイズ自動調整 */
+    :root {
+      --move-btn-width: 27px; --move-btn-height: 27px; --move-btn-font: 14px; --move-btn-padding: 4px 0;
+      --slider-width: 80px; --slider-height: 24px;
+      --close-btn-font: 16px; --close-btn-padding: 6px 10px;
+    }
+    @media (max-width: 600px) {
+      :root {
+        --move-btn-width: 38px; --move-btn-height: 38px; --move-btn-font: 22px; --move-btn-padding: 6px 0;
+        --slider-width: 110px; --slider-height: 34px;
+        --close-btn-font: 28px; --close-btn-padding: 10px 16px;
+      }
+    }
+    @media (min-width: 1024px) {
+      :root {
+        --move-btn-width: 32px; --move-btn-height: 32px; --move-btn-font: 16px; --move-btn-padding: 4px 0;
+        --slider-width: 100px; --slider-height: 28px;
+        --close-btn-font: 22px; --close-btn-padding: 7px 14px;
+      }
+    }
+    /* ユーザー設定値が上書きされる場合はJSでstyleを当てる */
   </style>
 </head>
 <body>
@@ -155,6 +182,28 @@
         <label><input type="checkbox" id="toggleMoveBtn" checked> 移動ボタンを表示</label><br>
         <label><input type="checkbox" id="toggleVolumeSlider" checked> 音量スライダーを表示</label>
       </div>
+      <fieldset style="margin-top:16px; border:1px solid #444; border-radius:8px; padding:10px;">
+        <legend style="color:#fff;font-size:15px;">ボタン/スライダーのサイズ</legend>
+        <label>
+          上下ボタン:
+          <input type="range" id="moveBtnSize" min="20" max="60" value="0" style="width:110px;">
+          <span id="moveBtnSizeLabel"></span>
+        </label>
+        <br>
+        <label>
+          音量スライダー:
+          <input type="range" id="sliderSize" min="60" max="200" value="0" style="width:110px;">
+          <span id="sliderSizeLabel"></span>
+        </label>
+        <br>
+        <label>
+          閉じるボタン:
+          <input type="range" id="closeBtnSize" min="16" max="48" value="0" style="width:110px;">
+          <span id="closeBtnSizeLabel"></span>
+        </label>
+        <br>
+        <button type="button" id="resetBtn" style="margin-top:8px;">デフォルトに戻す</button>
+      </fieldset>
     </div>
   </div>
 
@@ -162,6 +211,105 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
+    // --- サイズ設定の保存/読込/反映 ---
+    // デフォルト値の算出
+    function getDefaultSizes() {
+      // メディアクエリと同じ条件でデフォルトを返す
+      const w = window.innerWidth;
+      if (w < 600) {
+        return {
+          moveBtn: 38,
+          moveBtnFont: 22,
+          slider: 110,
+          sliderHeight: 34,
+          closeBtn: 28
+        };
+      } else if (w >= 1024) {
+        return {
+          moveBtn: 32,
+          moveBtnFont: 16,
+          slider: 100,
+          sliderHeight: 28,
+          closeBtn: 22
+        };
+      } else {
+        return {
+          moveBtn: 27,
+          moveBtnFont: 14,
+          slider: 80,
+          sliderHeight: 24,
+          closeBtn: 16
+        };
+      }
+    }
+
+    function saveCustomSizes(sizes) {
+      localStorage.setItem('customButtonSizes', JSON.stringify(sizes));
+    }
+    function loadCustomSizes() {
+      try {
+        return JSON.parse(localStorage.getItem('customButtonSizes')) || {};
+      } catch(e) {
+        return {};
+      }
+    }
+
+    function applyCustomSizes() {
+      const sizes = Object.assign(getDefaultSizes(), loadCustomSizes());
+      document.documentElement.style.setProperty('--move-btn-width', sizes.moveBtn + 'px');
+      document.documentElement.style.setProperty('--move-btn-height', sizes.moveBtn + 'px');
+      document.documentElement.style.setProperty('--move-btn-font', sizes.moveBtnFont + 'px');
+      document.documentElement.style.setProperty('--move-btn-padding', '4px 0');
+      document.documentElement.style.setProperty('--slider-width', sizes.slider + 'px');
+      document.documentElement.style.setProperty('--slider-height', (sizes.sliderHeight||24) + 'px');
+      document.documentElement.style.setProperty('--close-btn-font', sizes.closeBtn + 'px');
+      document.documentElement.style.setProperty('--close-btn-padding', '6px 10px');
+      // UIラベルも更新
+      updateSizeSliders(sizes);
+    }
+
+    function updateSizeSliders(sizes) {
+      // スライダーの値とラベルをUIに反映
+      document.getElementById('moveBtnSize').value = sizes.moveBtn;
+      document.getElementById('moveBtnSizeLabel').textContent = sizes.moveBtn + 'px';
+      document.getElementById('sliderSize').value = sizes.slider;
+      document.getElementById('sliderSizeLabel').textContent = sizes.slider + 'px';
+      document.getElementById('closeBtnSize').value = sizes.closeBtn;
+      document.getElementById('closeBtnSizeLabel').textContent = sizes.closeBtn + 'px';
+    }
+
+    function setSizeAndSave(type, value) {
+      // moveBtn, slider, closeBtn
+      const sizes = Object.assign(getDefaultSizes(), loadCustomSizes());
+      if (type === "moveBtn") {
+        sizes.moveBtn = Number(value);
+        sizes.moveBtnFont = Math.round(value * 0.58);
+      } else if (type === "slider") {
+        sizes.slider = Number(value);
+        sizes.sliderHeight = Math.round(value * 0.3);
+      } else if (type === "closeBtn") {
+        sizes.closeBtn = Number(value);
+      }
+      saveCustomSizes(sizes);
+      applyCustomSizes();
+    }
+
+    function resetSizes() {
+      localStorage.removeItem('customButtonSizes');
+      applyCustomSizes();
+    }
+
+    // スライダーUIのイベント
+    window.addEventListener('DOMContentLoaded', () => {
+      applyCustomSizes();
+      // スライダーのイベント
+      document.getElementById('moveBtnSize').addEventListener('input', e => setSizeAndSave('moveBtn', e.target.value));
+      document.getElementById('sliderSize').addEventListener('input', e => setSizeAndSave('slider', e.target.value));
+      document.getElementById('closeBtnSize').addEventListener('input', e => setSizeAndSave('closeBtn', e.target.value));
+      document.getElementById('resetBtn').onclick = resetSizes;
+    });
+
+    // --- ここから下は元の動画・UI管理スクリプト ---
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
     const c = document.getElementById("container");
     let videoData = [];
@@ -315,6 +463,7 @@
       loadState();
       applyLayout(loadCols());
       layoutSelect.value = loadCols();
+      applyCustomSizes();
     };
 
     document.getElementById("showPopupBtn").onclick = () => {
@@ -329,6 +478,11 @@
       document.getElementById("popupOverlay").style.display = "none";
       document.getElementById("popupControls").style.display = "none";
     };
+
+    // 画面幅の変化でデフォルトサイズも再計算
+    window.addEventListener('resize', () => {
+      applyCustomSizes();
+    });
   </script>
 </body>
 </html>

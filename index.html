@@ -3,160 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTubeプレイヤー（保存・サムネ対応）</title>
+  <title>YouTubeプレイヤー（保存・スマホ対応）</title>
   <style>
-  body {
-    margin: 0;
-    background: #000;
-    color: #fff;
-    font-family: sans-serif;
-  }
-  #topBar {
-    width: 100%;
-    background: #111;
-    padding: 0.5px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 9999;
-    text-align: right;
-  }
-  #showPopupBtn {
-    position: absolute;
-    top: 0%;
-    right: 0%;
-    width: 12vw;
-    height: 4vw;
-    min-width: 32px;
-    min-height: 20px;
-    font-size: 1.5vw;
-    background: #222;
-    color: white;
-    border: 1px solid #555;
-    cursor: pointer;
-  }
-  .popup {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 9998;
-  }
-  .popup.active {
-    display: block;
-  }
-  #popupControls {
-    position: fixed;
-    top: 10%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #111;
-    border: 1px solid #444;
-    padding: 16px;
-    z-index: 9999;
-    max-width: 600px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 0 10px #000;
-  }
-  #popupClose {
-    background: red;
-    color: white;
-    border: none;
-    cursor: pointer;
-    position: absolute;
-    top: 0.5vw;
-    right: 0.5vw;
-    font-size: 2vw;
-  }
-  #controls {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .control-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  select, input, button {
-    font-size: 14px;
-    padding: 6px;
-    flex: 1;
-  }
-  #container {
-    display: grid;
-    gap: 10px;
-    padding: 10px;
-    margin-top: 50px;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-  .video-thumb {
-    position: relative;
-    background: #222;
-    border: 1px solid #444;
-    padding-top: 56.25%;
-    overflow: visible;
-    cursor: pointer;
-  }
-  .video-thumb img,
-  .video-thumb iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .btn {
-    position: absolute;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 10px;
-    padding: 4px;
-  }
-  .btn-close { top: 2px; right: 2px; background: red; }
-  .btn-up { top: 2px; left: 2px; }
-  .btn-down { top: 28px; left: 2px; }
-  .volume-slider {
-    position: absolute;
-    left: 2px;
-    bottom: 2px;
-    width: 30%;
-    height: 16px;
-    z-index: 11;
-  }
-
-  /* --- スマホ対応用メディアクエリ --- */
-  @media (max-width: 600px) {
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #topBar {
+      width: 100%;
+      background: #111;
+      padding: 0.5px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      text-align: right;
+    }
+    #showPopupBtn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 12vw;
+      height: 4vw;
+      min-width: 32px;
+      min-height: 20px;
+      font-size: 1.5vw;
+      background: #222;
+      color: white;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9998;
+    }
+    .popup.active {
+      display: block;
+    }
     #popupControls {
-      top: 5%;
-      width: 95%;
-      font-size: 14px;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      border: 1px solid #444;
+      padding: 16px;
+      z-index: 9999;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 10px #000;
     }
     #popupClose {
-      font-size: 5vw;
-      top: 2vw;
-      right: 2vw;
+      background: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+      position: absolute;
+      top: 0.5vw;
+      right: 0.5vw;
+      font-size: 2vw;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     select, input, button {
-      font-size: 12px;
-      padding: 6px 4px;
+      font-size: 14px;
+      padding: 6px;
+      flex: 1;
+    }
+    #container {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      margin-top: 50px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .video-thumb {
+      position: relative;
+      background: #222;
+      border: 1px solid #444;
+      padding-top: 56.25%;
+      overflow: visible;
+      cursor: pointer;
+    }
+    .video-thumb img,
+    .video-thumb iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     .btn {
-      font-size: 8px;
-      padding: 3px;
+      position: absolute;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 10px;
+      padding: 4px;
     }
+    .btn-close { top: 2px; right: 2px; background: red; }
+    .btn-up { top: 2px; left: 2px; }
+    .btn-down { top: 28px; left: 2px; }
     .volume-slider {
-      width: 40%;
-      height: 14px;
+      position: absolute;
+      left: 2px;
+      bottom: 2px;
+      width: 30%;
+      height: 16px;
+      z-index: 11;
     }
-  }
-</style>
 
+    /* スマホ対応 */
+    @media (max-width: 600px) {
+      #popupControls {
+        top: 5%;
+        width: 95%;
+        font-size: 14px;
+      }
+      #popupClose {
+        font-size: 5vw;
+        top: 2vw;
+        right: 2vw;
+      }
+      select, input, button {
+        font-size: 12px;
+        padding: 6px 4px;
+      }
+      .btn {
+        font-size: 8px;
+        padding: 3px;
+      }
+      .volume-slider {
+        width: 40%;
+        height: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="topBar">
@@ -181,7 +180,7 @@
         <button onclick="addSelectedVideo()">選択して追加</button>
         <select id="layoutSelect">
           <option value="1">1x1</option>
-          <option value="2" selected>2x2</option>
+          <option value="2">2x2</option>
           <option value="3">3x3</option>
           <option value="4">4x4</option>
         </select>
@@ -204,13 +203,9 @@
   <script>
     const container = document.getElementById("container");
     const layoutSelect = document.getElementById("layoutSelect");
-    const videoList = document.getElementById("videoList");
-    const mainCategory = document.getElementById("mainCategory");
-    const subCategory = document.getElementById("subCategory");
     const toggleRemoveBtn = document.getElementById("toggleRemoveBtn");
     const toggleMoveBtn = document.getElementById("toggleMoveBtn");
     const toggleVolumeSlider = document.getElementById("toggleVolumeSlider");
-    let videoData = [];
 
     function extractVideoID(url) {
       const match = url.match(/(?:v=|\/)([\w-]{11})(?:[&?]|$)/);
@@ -303,22 +298,42 @@
     function saveState() {
       const ids = [...document.querySelectorAll(".video-thumb")].map(div => div.dataset.videoId);
       localStorage.setItem("videoThumbs", JSON.stringify(ids));
+      localStorage.setItem("layoutCols", layoutSelect.value); // 配置保存
     }
 
     function loadState() {
       const saved = JSON.parse(localStorage.getItem("videoThumbs") || "[]");
       saved.forEach(id => createVideo(id));
+
+      const layout = localStorage.getItem("layoutCols") || "2";
+      layoutSelect.value = layout;
+      container.style.gridTemplateColumns = `repeat(${layout}, 1fr)`;
+    }
+
+    layoutSelect.onchange = () => {
+      const cols = layoutSelect.value;
+      container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      saveState();
+    };
+
+    document.getElementById("showPopupBtn").onclick = () => togglePopup(true);
+    document.getElementById("popupClose").onclick = () => togglePopup(false);
+    document.getElementById("popupOverlay").onclick = () => togglePopup(false);
+
+    function togglePopup(show) {
+      document.getElementById("popupOverlay").classList.toggle("active", show);
+      document.getElementById("popupControls").classList.toggle("active", show);
+    }
+
+    function getSavedVolume(id) {
+      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      return v[id] ?? 100;
     }
 
     function saveVolume(id, vol) {
       const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
       v[id] = vol;
       localStorage.setItem("videoVolumes", JSON.stringify(v));
-    }
-
-    function getSavedVolume(id) {
-      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
-      return v[id] ?? 100;
     }
 
     function addVideoByUrl() {
@@ -330,68 +345,13 @@
     }
 
     function addSelectedVideo() {
-      const url = videoList.value;
+      const url = document.getElementById("videoList").value;
       const id = extractVideoID(url);
       if (!id) return alert("選択されたURLが無効です");
       createVideo(id);
     }
 
-    layoutSelect.onchange = () => {
-      const cols = layoutSelect.value;
-      container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    };
-
-    const togglePopup = show => {
-      document.getElementById("popupOverlay").classList.toggle("active", show);
-      document.getElementById("popupControls").classList.toggle("active", show);
-    };
-
-    document.getElementById("showPopupBtn").onclick = () => togglePopup(true);
-    document.getElementById("popupClose").onclick = () => togglePopup(false);
-    document.getElementById("popupOverlay").onclick = () => togglePopup(false);
-
-    async function loadSpreadsheet() {
-      const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
-      const response = await fetch(sheetUrl);
-      const csv = await response.text();
-      const lines = csv.trim().split("\n").slice(1);
-      videoData = lines.map(line => {
-        const [title, main, sub, url] = line.split(",").map(x => x.replace(/"/g, "").trim());
-        return { title, main, sub, url };
-      }).filter(v => v.url);
-
-      populateCategories();
-      filterVideoList();
-    }
-
-    function populateCategories() {
-      const mains = [...new Set(videoData.map(v => v.main))];
-      const subs = [...new Set(videoData.map(v => v.sub))];
-
-      mainCategory.innerHTML = '<option value="">大分類</option>' + mains.map(v => `<option>${v}</option>`).join("");
-      subCategory.innerHTML = '<option value="">小分類</option>' + subs.map(v => `<option>${v}</option>`).join("");
-    }
-
-    function filterVideoList() {
-      const main = mainCategory.value;
-      const sub = subCategory.value;
-      videoList.innerHTML = "";
-
-      videoData.filter(v => (!main || v.main === main) && (!sub || v.sub === sub))
-               .forEach(v => {
-        const option = new Option(`${v.title} (${v.main}/${v.sub})`, v.url);
-        videoList.add(option);
-      });
-    }
-
-    function clearFilters() {
-      mainCategory.value = "";
-      subCategory.value = "";
-      filterVideoList();
-    }
-
     window.onload = () => {
-      loadSpreadsheet();
       loadState();
     };
   </script>

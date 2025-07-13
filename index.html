@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>YouTubeプレイヤー（設定ポップアップ）</title>
   <style>
+    /* --- 基本のスタイル設定 --- */
     body {
       margin: 0;
       background: #000;
@@ -128,6 +129,7 @@
       accent-color: #178582;
     }
 
+    /* --- カスタムプロパティ：各種サイズ --- */
     :root {
       --move-btn-width: 6vw;
       --move-btn-height: 6vw;
@@ -165,14 +167,17 @@
   </style>
 </head>
 <body>
+  <!-- トップバー（設定ボタン） -->
   <div id="topBar">
     <button id="showPopupBtn">設定を開く</button>
   </div>
 
+  <!-- 設定ポップアップのオーバーレイと本体 -->
   <div id="popupOverlay"></div>
   <div id="popupControls">
     <button id="popupClose">×</button>
     <div id="controls">
+      <!-- 動画追加・フィルタなど -->
       <div class="control-left">
         <select id="mainCategory" onchange="filterVideos()"><option value="">大分類</option></select>
         <select id="subCategory" onchange="filterVideos()"><option value="">小分類</option></select>
@@ -186,15 +191,18 @@
           <option value="4">4×4</option>
         </select>
       </div>
+      <!-- 動画URL直接追加 -->
       <div class="control-right">
         <input id="videoUrl" placeholder="YouTubeのURL">
         <button onclick="addVideoByUrl()">URL追加</button>
       </div>
+      <!-- 表示制御チェックボックス -->
       <div style="margin-top:10px; color: #ccc;">
         <label><input type="checkbox" id="toggleRemoveBtn" checked> 削除ボタンを表示</label><br>
         <label><input type="checkbox" id="toggleMoveBtn" checked> 移動ボタンを表示</label><br>
         <label><input type="checkbox" id="toggleVolumeSlider" checked> 音量スライダーを表示</label>
       </div>
+      <!-- サイズ調整スライダー -->
       <fieldset style="margin-top:16px; border:1px solid #444; border-radius:8px; padding:10px;">
         <legend style="color:#fff;font-size:15px;">ボタン/スライダーのサイズ</legend>
         <label>
@@ -220,12 +228,15 @@
     </div>
   </div>
 
+  <!-- サムネイル表示エリア -->
   <div id="container"></div>
 
+  <!-- YouTube APIの読み込み -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     // --- サイズ設定の保存/読込/反映（vw単位） ---
     function getDefaultSizes() {
+      // 画面幅に応じたデフォルト値を返す
       const w = window.innerWidth;
       if (w < 600) {
         return {
@@ -255,9 +266,11 @@
     }
 
     function saveCustomSizes(sizes) {
+      // カスタムサイズ設定をlocalStorageに保存
       localStorage.setItem('customButtonSizesVW', JSON.stringify(sizes));
     }
     function loadCustomSizes() {
+      // カスタムサイズ設定をlocalStorageから取得
       try {
         return JSON.parse(localStorage.getItem('customButtonSizesVW')) || {};
       } catch(e) {
@@ -266,6 +279,7 @@
     }
 
     function applyCustomSizes() {
+      // 現在のサイズ設定をCSS変数に反映
       const sizes = Object.assign(getDefaultSizes(), loadCustomSizes());
       document.documentElement.style.setProperty('--move-btn-width', sizes.moveBtn + 'vw');
       document.documentElement.style.setProperty('--move-btn-height', sizes.moveBtn + 'vw');
@@ -279,6 +293,7 @@
     }
 
     function updateSizeSliders(sizes) {
+      // 各スライダーUIをサイズに合わせて更新
       document.getElementById('moveBtnSize').value = sizes.moveBtn;
       document.getElementById('moveBtnSizeLabel').textContent = sizes.moveBtn + 'vw';
       document.getElementById('sliderSize').value = sizes.slider;
@@ -288,6 +303,7 @@
     }
 
     function setSizeAndSave(type, value) {
+      // サイズスライダー操作時に値を保存し反映
       const sizes = Object.assign(getDefaultSizes(), loadCustomSizes());
       if (type === "moveBtn") {
         sizes.moveBtn = Number(value);
@@ -303,10 +319,12 @@
     }
 
     function resetSizes() {
+      // サイズ設定をデフォルトに戻す
       localStorage.removeItem('customButtonSizesVW');
       applyCustomSizes();
     }
 
+    // ページ初期化時にサイズ設定を反映し、スライダーイベントを設定
     window.addEventListener('DOMContentLoaded', () => {
       applyCustomSizes();
       document.getElementById('moveBtnSize').addEventListener('input', e => setSizeAndSave('moveBtn', e.target.value));
@@ -320,8 +338,10 @@
     const c = document.getElementById("container");
     let videoData = [];
 
+    // YouTubeのURLからIDを抽出
     const extractVideoID = url => (url.match(/(?:v=|\/)([\w-]{11})(?:[&?]|$)/) || [])[1] || null;
 
+    // スプレッドシートから動画データを取得
     const loadSpreadsheet = async () => {
       const lines = (await (await fetch(sheetUrl)).text()).trim().split("\n").slice(1);
       videoData = lines.map(l => {
@@ -332,6 +352,7 @@
       filterVideos();
     };
 
+    // カテゴリフィルタの選択肢を生成
     const populateFilters = () => {
       const mainSel = document.getElementById("mainCategory"), subSel = document.getElementById("subCategory");
       const mains = [...new Set(videoData.map(v => v.main))], subs = [...new Set(videoData.map(v => v.sub))];
@@ -339,6 +360,7 @@
       subSel.innerHTML = '<option value="">小分類</option>' + subs.map(v => `<option>${v}</option>`).join("");
     };
 
+    // 選択されたカテゴリでリストをフィルタ
     const filterVideos = () => {
       const main = mainCategory.value, sub = subCategory.value, list = sheetVideoList;
       list.innerHTML = "";
@@ -348,13 +370,16 @@
       });
     };
 
+    // フィルタ解除
     const clearFilters = () => {
       mainCategory.value = subCategory.value = "";
       filterVideos();
     };
 
+    // 選択リストから動画追加
     const addSelectedVideos = () => addVideoByUrl(sheetVideoList.value);
 
+    // URL入力またはリストから動画追加
     const addVideoByUrl = (inputUrl = null) => {
       const id = extractVideoID(inputUrl || videoUrl.value);
       if (!id) return alert("無効なURLです");
@@ -363,25 +388,30 @@
       saveState();
     };
 
+    // サムネイルを生成し、クリックで埋め込み再生に切り替え
     const createThumbnail = id => {
       const box = document.createElement("div");
       box.className = "video-thumb";
       box.dataset.videoId = id;
 
+      // サムネイル画像
       const img = Object.assign(document.createElement("img"), {
         src: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
         loading: "lazy"
       });
 
+      // 削除ボタン
       const close = Object.assign(document.createElement("button"), { className: "remove-btn", textContent: "×" });
       close.onclick = e => (e.stopPropagation(), box.remove(), saveState());
 
+      // 上下移動ボタン
       const up = Object.assign(document.createElement("button"), { className: "move-btn move-up", textContent: "↑" });
       up.onclick = e => (e.stopPropagation(), moveBox(box, -1));
 
       const down = Object.assign(document.createElement("button"), { className: "move-btn move-down", textContent: "↓" });
       down.onclick = e => (e.stopPropagation(), moveBox(box, 1));
 
+      // サムネイルクリックで動画再生に切り替え
       box.onclick = () => {
         if (box.querySelector("iframe")) return;
         const iframe = Object.assign(document.createElement("iframe"), {
@@ -391,6 +421,7 @@
           allowFullscreen: true
         });
 
+        // 音量スライダー
         const slider = Object.assign(document.createElement("input"), {
           type: "range",
           min: 0,
@@ -402,6 +433,7 @@
         box.innerHTML = "";
         box.append(close, up, down, iframe, slider);
 
+        // YouTube APIで音量制御
         new YT.Player(iframe, {
           events: {
             onReady: e => {
@@ -423,6 +455,7 @@
       c.appendChild(box);
     };
 
+    // 各種ボタン・スライダーの表示状態を反映
     const applyVisibility = (box) => {
       const close = box.querySelector(".remove-btn");
       const up = box.querySelector(".move-up");
@@ -437,12 +470,14 @@
       if (slider) slider.style.display = document.getElementById("toggleVolumeSlider").checked ? "block" : "none";
     };
 
+    // 各チェックボックス変更時に全動画へ反映
     ["toggleRemoveBtn", "toggleMoveBtn", "toggleVolumeSlider"].forEach(id => {
       document.getElementById(id).onchange = () => {
         document.querySelectorAll(".video-thumb").forEach(applyVisibility);
       };
     });
 
+    // 動画サムネイルの上下移動
     const moveBox = (box, dir) => {
       const boxes = [...c.children], i = boxes.indexOf(box), j = i + dir;
       if (j < 0 || j >= boxes.length) return;
@@ -450,11 +485,13 @@
       saveState();
     };
 
+    // レイアウト（列数）制御
     const saveCols = cols => localStorage.setItem("videoCols", cols);
     const loadCols = () => Number(localStorage.getItem("videoCols") || 1);
     const applyLayout = cols => { c.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; saveCols(cols); };
     layoutSelect.onchange = () => applyLayout(Number(layoutSelect.value));
 
+    // 各種状態をlocalStorageに保存・復元
     const saveState = () => localStorage.setItem("videoThumbs", JSON.stringify([...document.querySelectorAll(".video-thumb")].map(b => b.dataset.videoId)));
     const loadState = () => JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(id => createThumbnail(id));
     const saveVolume = (id, vol) => {
@@ -464,6 +501,7 @@
     };
     const getSavedVolume = id => JSON.parse(localStorage.getItem("videoVolumes") || "{}")[id] ?? 100;
 
+    // ページ読み込み時の初期化
     window.onload = () => {
       loadSpreadsheet();
       loadState();
@@ -472,6 +510,7 @@
       applyCustomSizes();
     };
 
+    // 設定ポップアップの表示・非表示
     document.getElementById("showPopupBtn").onclick = () => {
       document.getElementById("popupOverlay").style.display = "block";
       document.getElementById("popupControls").style.display = "block";
@@ -485,6 +524,7 @@
       document.getElementById("popupControls").style.display = "none";
     };
 
+    // ウィンドウリサイズ時にサイズ設定を再適用
     window.addEventListener('resize', () => {
       applyCustomSizes();
     });

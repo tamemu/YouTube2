@@ -2,8 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTubeプレイヤー（保存・スマホ対応）</title>
+  <title>軽量版 YouTube プレイヤー（設定ポップアップ統合版）</title>
   <style>
     body {
       margin: 0;
@@ -11,86 +10,40 @@
       color: #fff;
       font-family: sans-serif;
     }
-    #topBar {
-      width: 100%;
-      background: #111;
-      padding: 0.5px;
+    #settingsButton {
       position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 9999;
-      text-align: right;
-    }
-    #showPopupBtn {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 12vw;
-      height: 4vw;
-      min-width: 32px;
-      min-height: 20px;
-      font-size: 1.5vw;
-      background: #222;
-      color: white;
-      border: 1px solid #555;
-      cursor: pointer;
-    }
-    .popup {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 9998;
-    }
-    .popup.active {
-      display: block;
-    }
-    #popupControls {
-      position: fixed;
-      top: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111;
-      border: 1px solid #444;
-      padding: 16px;
-      z-index: 9999;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 0 10px #000;
-    }
-    #popupClose {
-      background: red;
-      color: white;
-      border: none;
-      cursor: pointer;
-      position: absolute;
-      top: 0.5vw;
-      right: 0.5vw;
-      font-size: 2vw;
+      top: 6px;
+      right: 10px;
+      z-index: 1000;
+      font-size: 12px;
+      padding: 6px 10px;
     }
     #controls {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      position: fixed;
+      top: 40px;
+      right: 10px;
+      background: #222;
+      border: 1px solid #555;
+      padding: 10px;
+      z-index: 999;
+      display: none;
+      font-size: 12px;
+      color: #fff;
+      max-width: 360px;
     }
     .control-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+      margin-bottom: 10px;
     }
     select, input, button {
-      font-size: 14px;
-      padding: 6px;
-      flex: 1;
+      font-size: 12px;
+      padding: 3px;
+      margin: 2px 0;
     }
     #container {
       display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 10px;
-      margin-top: 50px;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
     .video-thumb {
       position: relative;
@@ -100,100 +53,73 @@
       overflow: visible;
       cursor: pointer;
     }
-    .video-thumb img,
-    .video-thumb iframe {
+    .video-thumb iframe,
+    .video-thumb img {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
     }
-    .btn {
+    .remove-btn {
       position: absolute;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
+      top: 2px; right: 2px;
+      background: red; color: #fff;
       border: none;
+      font-size: 12px;
+      padding: 2px 5px;
       cursor: pointer;
-      font-size: 10px;
-      padding: 4px;
+      z-index: 10;
     }
-    .btn-close { top: 2px; right: 2px; background: red; }
-    .btn-up { top: 2px; left: 2px; }
-    .btn-down { top: 28px; left: 2px; }
-    .volume-slider {
+    .move-btn {
       position: absolute;
       left: 2px;
-      bottom: 2px;
-      width: 30%;
-      height: 16px;
-      z-index: 11;
+      width: 24px;
+      font-size: 12px;
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      z-index: 10;
     }
-
-    /* スマホ対応 */
-    @media (max-width: 600px) {
-      #popupControls {
-        top: 5%;
-        width: 95%;
-        font-size: 14px;
-      }
-      #popupClose {
-        font-size: 5vw;
-        top: 2vw;
-        right: 2vw;
-      }
-      select, input, button {
-        font-size: 12px;
-        padding: 6px 4px;
-      }
-      .btn {
-        font-size: 8px;
-        padding: 3px;
-      }
-      .volume-slider {
-        width: 40%;
-        height: 14px;
-      }
+    .move-up { top: 2px; }
+    .move-down { top: 24px; }
+    .volume-slider {
+      position: absolute;
+      left: 40px;
+      top: 4px;
+      width: 80px;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
-  <div id="topBar">
-    <button id="showPopupBtn">設定を開く</button>
-  </div>
-
-  <div id="popupOverlay" class="popup"></div>
-  <div id="popupControls" class="popup">
-    <button id="popupClose">×</button>
-    <div id="controls">
-      <div class="control-group">
-        <select id="mainCategory" onchange="filterVideoList()">
-          <option value="">大分類</option>
-        </select>
-        <select id="subCategory" onchange="filterVideoList()">
-          <option value="">小分類</option>
-        </select>
-        <button onclick="clearFilters()">全解除</button>
-      </div>
-      <div class="control-group">
-        <select id="videoList"></select>
-        <button onclick="addSelectedVideo()">選択して追加</button>
-        <select id="layoutSelect">
-          <option value="1">1x1</option>
-          <option value="2">2x2</option>
-          <option value="3">3x3</option>
-          <option value="4">4x4</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <input id="videoUrl" placeholder="YouTubeのURL">
-        <button onclick="addVideoByUrl()">URL追加</button>
-      </div>
-      <div class="control-group">
-        <label><input type="checkbox" id="toggleRemoveBtn" checked> 削除ボタン</label>
-        <label><input type="checkbox" id="toggleMoveBtn" checked> 移動ボタン</label>
-        <label><input type="checkbox" id="toggleVolumeSlider" checked> 音量スライダー</label>
-      </div>
+  <button id="settingsButton" onclick="toggleSettings()">設定を開く</button>
+  <div id="controls">
+    <div class="control-group">
+      <label><input type="checkbox" id="toggleMove" checked> 上下移動ボタン</label><br>
+      <label><input type="checkbox" id="toggleVolume" checked> 音量スライダー</label><br>
+      <label><input type="checkbox" id="toggleRemove" checked> 削除ボタン</label>
+    </div>
+    <div class="control-group">
+      <select id="mainCategory" onchange="filterVideos()">
+        <option value="">大分類</option>
+      </select>
+      <select id="subCategory" onchange="filterVideos()">
+        <option value="">小分類</option>
+      </select>
+      <button onclick="clearFilters()">全解除</button><br>
+      <select id="sheetVideoList"></select>
+      <button onclick="addSelectedVideos()">動画を追加</button>
+    </div>
+    <div class="control-group">
+      <input id="videoUrl" placeholder="YouTubeのURL">
+      <button onclick="addVideoByUrl()">URL追加</button>
+    </div>
+    <div class="control-group">
+      <button onclick="applyLayout(1)">1×1</button>
+      <button onclick="applyLayout(2)">2×2</button>
+      <button onclick="applyLayout(3)">3×3</button>
+      <button onclick="applyLayout(4)">4×4</button>
     </div>
   </div>
 
@@ -201,159 +127,174 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    const container = document.getElementById("container");
-    const layoutSelect = document.getElementById("layoutSelect");
-    const toggleRemoveBtn = document.getElementById("toggleRemoveBtn");
-    const toggleMoveBtn = document.getElementById("toggleMoveBtn");
-    const toggleVolumeSlider = document.getElementById("toggleVolumeSlider");
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
+    const MAX_VIDEOS = 16;
+    let videoData = [];
 
-    function extractVideoID(url) {
-      const match = url.match(/(?:v=|\/)([\w-]{11})(?:[&?]|$)/);
-      return match ? match[1] : null;
+    function toggleSettings() {
+      const panel = document.getElementById("controls");
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
     }
 
-    function createVideo(id) {
-      const div = document.createElement("div");
-      div.className = "video-thumb";
-      div.dataset.videoId = id;
+    function extractVideoID(url) {
+      const m = url.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[&?]|$)/);
+      return m ? m[1] : null;
+    }
 
+    async function loadSpreadsheet() {
+      const res = await fetch(sheetUrl);
+      const text = await res.text();
+      const lines = text.trim().split("\n").slice(1);
+      videoData = lines.map(line => {
+        const [title, main, sub, url] = line.split(",").map(v => v.replace(/"/g, "").trim());
+        return { title, main, sub, url };
+      }).filter(v => v.url);
+      populateFilters();
+      filterVideos();
+    }
+
+    function populateFilters() {
+      const mainSel = document.getElementById("mainCategory");
+      const subSel = document.getElementById("subCategory");
+      const mains = [...new Set(videoData.map(v => v.main))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub))].sort();
+      mainSel.innerHTML = '<option value="">大分類</option>';
+      subSel.innerHTML = '<option value="">小分類</option>';
+      mains.forEach(v => mainSel.innerHTML += `<option>${v}</option>`);
+      subs.forEach(v => subSel.innerHTML += `<option>${v}</option>`);
+    }
+
+    function filterVideos() {
+      const main = document.getElementById("mainCategory").value;
+      const sub = document.getElementById("subCategory").value;
+      const list = document.getElementById("sheetVideoList");
+      list.innerHTML = "";
+      videoData
+        .filter(v => (!main || v.main === main) && (!sub || v.sub === sub))
+        .forEach(v => {
+          const o = document.createElement("option");
+          o.value = v.url;
+          o.textContent = `${v.title} (${v.main}/${v.sub})`;
+          list.appendChild(o);
+        });
+    }
+
+    function clearFilters() {
+      document.getElementById("mainCategory").value = "";
+      document.getElementById("subCategory").value = "";
+      filterVideos();
+    }
+
+    function addSelectedVideos() {
+      const url = document.getElementById("sheetVideoList").value;
+      addVideoByUrl(url);
+    }
+
+    function addVideoByUrl(inputUrl = null) {
+      const url = inputUrl || document.getElementById("videoUrl").value;
+      const id = extractVideoID(url);
+      if (!id) return alert("有効なYouTubeリンクを入力してください");
+      if (document.getElementById("container").children.length >= MAX_VIDEOS) return alert("最大16件まで追加できます");
+      createThumbnail(id);
+      document.getElementById("videoUrl").value = "";
+    }
+
+    function createThumbnail(id) {
+      const container = document.getElementById("container");
+      const box = document.createElement("div");
+      box.className = "video-thumb";
+      box.dataset.videoId = id;
       const img = document.createElement("img");
       img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+      img.loading = "lazy";
 
-      const closeBtn = document.createElement("button");
-      closeBtn.textContent = "×";
-      closeBtn.className = "btn btn-close";
-      closeBtn.onclick = e => { e.stopPropagation(); div.remove(); saveState(); };
+      const showRemove = document.getElementById("toggleRemove")?.checked;
+      const showMove = document.getElementById("toggleMove")?.checked;
 
-      const upBtn = document.createElement("button");
-      upBtn.textContent = "↑";
-      upBtn.className = "btn btn-up";
-      upBtn.onclick = e => moveVideo(div, -1, e);
+      const close = document.createElement("button");
+      close.className = "remove-btn";
+      close.textContent = "×";
+      close.onclick = e => { e.stopPropagation(); box.remove(); };
 
-      const downBtn = document.createElement("button");
-      downBtn.textContent = "↓";
-      downBtn.className = "btn btn-down";
-      downBtn.onclick = e => moveVideo(div, 1, e);
+      const up = document.createElement("button");
+      up.className = "move-btn move-up";
+      up.textContent = "↑";
+      up.onclick = e => { e.stopPropagation(); moveBox(box, -1); };
 
-      const volume = document.createElement("input");
-      volume.type = "range";
-      volume.min = 0;
-      volume.max = 100;
-      volume.value = getSavedVolume(id);
-      volume.className = "volume-slider";
+      const down = document.createElement("button");
+      down.className = "move-btn move-down";
+      down.textContent = "↓";
+      down.onclick = e => { e.stopPropagation(); moveBox(box, 1); };
 
-      div.append(img, closeBtn, upBtn, downBtn, volume);
-      updateVisibility(div);
+      box.append(img);
+      if (showRemove) box.append(close);
+      if (showMove) box.append(up, down);
 
-      div.onclick = () => {
-        if (div.querySelector("iframe")) return;
+      box.onclick = () => {
+        if (box.querySelector("iframe")) return;
         const iframe = document.createElement("iframe");
         iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
         iframe.frameBorder = 0;
         iframe.allow = "autoplay; encrypted-media";
         iframe.allowFullscreen = true;
-        img.remove();
-        div.appendChild(iframe);
-        const player = new YT.Player(iframe, {
+
+        const volumeSlider = document.createElement("input");
+        volumeSlider.type = "range";
+        volumeSlider.min = 0;
+        volumeSlider.max = 100;
+        volumeSlider.value = getSavedVolume(id);
+        volumeSlider.className = "volume-slider";
+
+        box.innerHTML = "";
+        if (showRemove) box.append(close);
+        if (showMove) box.append(up, down);
+        box.append(iframe);
+
+        if (document.getElementById("toggleVolume")?.checked) box.append(volumeSlider);
+
+        const ytPlayer = new YT.Player(iframe, {
           events: {
-            onReady: e => {
-              e.target.setVolume(volume.value);
-              volume.oninput = () => {
-                e.target.setVolume(volume.value);
-                saveVolume(id, volume.value);
+            onReady: event => {
+              event.target.setVolume(volumeSlider.value);
+              volumeSlider.oninput = () => {
+                event.target.setVolume(volumeSlider.value);
+                saveVolume(id, volumeSlider.value);
               };
             }
           }
         });
       };
 
-      container.appendChild(div);
-      saveState();
+      container.appendChild(box);
     }
 
-    function moveVideo(div, dir, e) {
-      e.stopPropagation();
-      const boxes = [...container.children];
-      const i = boxes.indexOf(div);
-      const j = i + dir;
-      if (j >= 0 && j < boxes.length) {
-        container.insertBefore(div, dir > 0 ? boxes[j].nextSibling : boxes[j]);
-        saveState();
-      }
+    function moveBox(box, dir) {
+      const c = document.getElementById("container");
+      const arr = Array.from(c.children);
+      const i = arr.indexOf(box), j = i + dir;
+      if (j < 0 || j >= arr.length) return;
+      if (dir > 0) c.insertBefore(arr[j], box);
+      else c.insertBefore(box, arr[j]);
     }
 
-    function updateVisibility(div) {
-      div.querySelector(".btn-close").style.display = toggleRemoveBtn.checked ? "block" : "none";
-      div.querySelector(".btn-up").style.display = div.querySelector(".btn-down").style.display = toggleMoveBtn.checked ? "block" : "none";
-      const slider = div.querySelector(".volume-slider");
-      if (slider) slider.style.display = toggleVolumeSlider.checked ? "block" : "none";
+    function applyLayout(cols) {
+      document.getElementById("container").style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     }
 
-    [toggleRemoveBtn, toggleMoveBtn, toggleVolumeSlider].forEach(input => {
-      input.onchange = () => {
-        document.querySelectorAll(".video-thumb").forEach(updateVisibility);
-      };
-    });
-
-    function saveState() {
-      const ids = [...document.querySelectorAll(".video-thumb")].map(div => div.dataset.videoId);
-      localStorage.setItem("videoThumbs", JSON.stringify(ids));
-      localStorage.setItem("layoutCols", layoutSelect.value); // 配置保存
+    function saveVolume(videoId, volume) {
+      const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      volumes[videoId] = volume;
+      localStorage.setItem("videoVolumes", JSON.stringify(volumes));
     }
 
-    function loadState() {
-      const saved = JSON.parse(localStorage.getItem("videoThumbs") || "[]");
-      saved.forEach(id => createVideo(id));
-
-      const layout = localStorage.getItem("layoutCols") || "2";
-      layoutSelect.value = layout;
-      container.style.gridTemplateColumns = `repeat(${layout}, 1fr)`;
-    }
-
-    layoutSelect.onchange = () => {
-      const cols = layoutSelect.value;
-      container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-      saveState();
-    };
-
-    document.getElementById("showPopupBtn").onclick = () => togglePopup(true);
-    document.getElementById("popupClose").onclick = () => togglePopup(false);
-    document.getElementById("popupOverlay").onclick = () => togglePopup(false);
-
-    function togglePopup(show) {
-      document.getElementById("popupOverlay").classList.toggle("active", show);
-      document.getElementById("popupControls").classList.toggle("active", show);
-    }
-
-    function getSavedVolume(id) {
-      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
-      return v[id] ?? 100;
-    }
-
-    function saveVolume(id, vol) {
-      const v = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
-      v[id] = vol;
-      localStorage.setItem("videoVolumes", JSON.stringify(v));
-    }
-
-    function addVideoByUrl() {
-      const url = document.getElementById("videoUrl").value;
-      const id = extractVideoID(url);
-      if (!id) return alert("無効なURL");
-      createVideo(id);
-      document.getElementById("videoUrl").value = "";
-    }
-
-    function addSelectedVideo() {
-      const url = document.getElementById("videoList").value;
-      const id = extractVideoID(url);
-      if (!id) return alert("選択されたURLが無効です");
-      createVideo(id);
+    function getSavedVolume(videoId) {
+      const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      return volumes[videoId] !== undefined ? volumes[videoId] : 100;
     }
 
     window.onload = () => {
-      loadState();
-    };
+      loadSpreadsheet();
+    }
   </script>
 </body>
 </html>

@@ -279,6 +279,7 @@
 
     function applyLayout(cols) {
       document.getElementById("container").style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      localStorage.setItem("videoLayoutCols", cols);
     }
 
     function saveVolume(videoId, volume) {
@@ -294,7 +295,9 @@
 
     window.onload = () => {
       loadSpreadsheet();
-    }
+      const layout = localStorage.getItem("videoLayoutCols");
+      if (layout) applyLayout(parseInt(layout));
+    };
   </script>
 </body>
 </html>

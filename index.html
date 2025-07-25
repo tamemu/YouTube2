@@ -41,6 +41,8 @@
         .icon-check::before { content: "✓"; }
         .icon-eye::before { content: "👁️"; }
         .icon-eye-slash::before { content: "🙈"; }
+        .icon-stop::before { content: "⏹️"; }
+        .icon-play::before { content: "▶️"; }
 
         .container {
             max-width: 1400px;
@@ -108,6 +110,11 @@
             background: #ef4444;
         }
 
+        .status-indicator.paused {
+            background: #6b7280;
+            animation: none;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -170,6 +177,28 @@
 
         .btn.primary:hover {
             background: linear-gradient(45deg, #764ba2, #667eea);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+        }
+
+        .btn.danger:hover {
+            background: linear-gradient(45deg, #dc2626, #ef4444);
+        }
+
+        .btn.success {
+            background: linear-gradient(45deg, #10b981, #059669);
+        }
+
+        .btn.success:hover {
+            background: linear-gradient(45deg, #059669, #10b981);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
         }
 
         .video-container {
@@ -305,6 +334,12 @@
             border-radius: 8px;
             margin-bottom: 8px;
             border-left: 3px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
         }
 
         .history-time {
@@ -411,6 +446,36 @@
             transform: translateX(26px);
         }
 
+        .update-controls {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .update-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .empty-state .icon {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -503,6 +568,26 @@
                         <span class="icon icon-settings"></span>
                         <span id="settingsTitle">設定</span>
                     </div>
+
+                    <div class="update-controls">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="icon icon-refresh"></span> 自動更新設定
+                            </label>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button class="btn success" id="startUpdateBtn" onclick="startAutoUpdate()">
+                                    <span class="icon icon-play"></span> 開始
+                                </button>
+                                <button class="btn danger" id="stopUpdateBtn" onclick="stopAutoUpdate()" disabled>
+                                    <span class="icon icon-stop"></span> 停止
+                                </button>
+                            </div>
+                            <div class="update-status" id="updateStatus">
+                                <span>状態: <span id="updateStatusText">停止中</span></span>
+                                <span>次回更新: <span id="nextUpdateTime">--:--</span></span>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="preset-buttons">
                         <button class="preset-btn" onclick="applyPreset('default')" id="presetDefault">標準設定</button>
@@ -539,13 +624,19 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" id="updateIntervalLabel">更新間隔 (分)</label>
-                            <input type="number" class="form-input" id="updateInterval" value="5" min="1" max="60">
+                            <label class="form-label" id="earthquakeUpdateIntervalLabel">地震情報更新間隔</label>
+                            <select class="form-select" id="earthquakeUpdateInterval" onchange="updateEarthquakeInterval()">
+                                <option value="30">30秒</option>
+                                <option value="60" selected>1分</option>
+                                <option value="180">3分</option>
+                                <option value="300">5分</option>
+                                <option value="600">10分</option>
+                            </select>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label" id="historyCountLabel">履歴保存件数</label>
-                            <input type="number" class="form-input" id="historyCount" value="10" min="5" max="50">
+                            <input type="number" class="form-input" id="historyCount" value="20" min="5" max="100">
                         </div>
 
                         <div class="form-group">
@@ -608,8 +699,8 @@
                                 </label>
                             </div>
                             
-                            <button class="btn" onclick="refreshEarthquakeSystem()" style="width: 100%; margin-top: 10px;">
-                                <span class="icon icon-refresh"></span> <span id="refreshEarthquakeBtn">地震速報システム更新</span>
+                            <button class="btn" onclick="testEarthquakeAlert()" style="width: 100%; margin-top: 10px;">
+                                <span class="icon icon-warning"></span> <span id="testAlertBtn">アラートテスト</span>
                             </button>
                         </div>
                     </div>
@@ -632,13 +723,14 @@
                     <div class="panel-header">
                         <span class="icon icon-history"></span>
                         <span id="earthquakeHistoryTitle">地震履歴</span>
-                        <button class="btn" onclick="refreshEarthquakeSystem()" style="margin-left: auto; padding: 4px 8px; font-size: 0.8rem;">
+                        <button class="btn" onclick="refreshEarthquakeData()" style="margin-left: auto; padding: 4px 8px; font-size: 0.8rem;">
                             <span class="icon icon-refresh"></span> <span id="refreshDataBtn">更新</span>
                         </button>
                     </div>
-                    <div id="earthquakeHistory">
-                        <div class="history-item">
-                            <div class="history-info" id="loadingHistoryMsg">実際の地震データを読み込み中...</div>
+                    <div id="earthquakeHistory" style="max-height: 400px; overflow-y: auto;">
+                        <div class="empty-state">
+                            <span class="icon icon-history"></span>
+                            <p>地震データを読み込み中...</p>
                         </div>
                     </div>
                 </div>
@@ -650,7 +742,7 @@
                     </div>
                     <div class="status-item" style="justify-content: space-between; margin-bottom: 10px;">
                         <span id="versionLabel">バージョン:</span>
-                        <span>v2.1.0</span>
+                        <span>v2.2.0</span>
                     </div>
                     <div class="status-item" style="justify-content: space-between; margin-bottom: 10px;">
                         <span id="uptimeLabel">稼働時間:</span>
@@ -658,7 +750,7 @@
                     </div>
                     <div class="status-item" style="justify-content: space-between;">
                         <span id="dataSourceLabel">データソース:</span>
-                        <span id="dataSourceValue">気象庁API</span>
+                        <span id="dataSourceValue">P2P地震情報</span>
                     </div>
                 </div>
             </aside>
@@ -669,12 +761,13 @@
         // アプリケーション状態管理
         const AppState = {
             settings: {
-                updateInterval: 5,
-                historyCount: 10,
+                earthquakeUpdateInterval: 60,
+                historyCount: 20,
                 cameraSource: '',
                 videoSize: 'auto',
                 alertEnabled: true,
-                minAlertIntensity: 3
+                minAlertIntensity: 3,
+                autoUpdateEnabled: false
             },
             isFullscreen: false,
             startTime: Date.now(),
@@ -684,7 +777,10 @@
             categories: new Set(),
             regions: new Set(),
             favoriteCameras: [],
-            welcomeShown: false
+            welcomeShown: false,
+            earthquakeUpdateTimer: null,
+            autoUpdateTimer: null,
+            nextUpdateTime: null
         };
 
         // Googleスプレッドシートの設定
@@ -733,15 +829,21 @@
             loadSettings();
             loadCameraSourcesFromSpreadsheet();
             setupManualInput();
+            
+            // 初期の地震データ読み込み
+            setTimeout(() => {
+                loadRecentEarthquakeData();
+            }, 1000);
         });
 
         function initializeApp() {
-            updateConnectionStatus('connected');
+            updateConnectionStatus('connecting');
             updateLastUpdateTime();
             hideLoadingOverlay();
             startCameraSourceAutoUpdate();
-            initEarthquakeWebSocket();
-            loadRecentEarthquakeData();
+            
+            // 地震データの定期更新を開始
+            startEarthquakeAutoUpdate();
         }
 
         function startStatusUpdates() {
@@ -772,6 +874,10 @@
                     indicator.className = 'status-indicator error';
                     text.textContent = '接続エラー';
                     break;
+                case 'paused':
+                    indicator.className = 'status-indicator paused';
+                    text.textContent = '更新停止中';
+                    break;
             }
         }
 
@@ -794,6 +900,70 @@
                 hours.toString().padStart(2, '0') + ':' + 
                 minutes.toString().padStart(2, '0') + ':' + 
                 seconds.toString().padStart(2, '0');
+        }
+
+        // 地震データの自動更新制御
+        function startEarthquakeAutoUpdate() {
+            const interval = parseInt(document.getElementById('earthquakeUpdateInterval').value) * 1000;
+            
+            if (AppState.earthquakeUpdateTimer) {
+                clearInterval(AppState.earthquakeUpdateTimer);
+            }
+            
+            // 即座に一度更新
+            loadRecentEarthquakeData();
+            
+            // 定期更新を設定
+            AppState.earthquakeUpdateTimer = setInterval(() => {
+                if (AppState.settings.autoUpdateEnabled) {
+                    loadRecentEarthquakeData();
+                }
+            }, interval);
+            
+            updateNextUpdateTime(interval);
+        }
+
+        function updateEarthquakeInterval() {
+            startEarthquakeAutoUpdate();
+            showNotification('地震情報の更新間隔を変更しました', 'success');
+        }
+
+        function startAutoUpdate() {
+            AppState.settings.autoUpdateEnabled = true;
+            document.getElementById('startUpdateBtn').disabled = true;
+            document.getElementById('stopUpdateBtn').disabled = false;
+            document.getElementById('updateStatusText').textContent = '実行中';
+            updateConnectionStatus('connected');
+            
+            // 即座に更新
+            loadRecentEarthquakeData();
+            showNotification('自動更新を開始しました', 'success');
+        }
+
+        function stopAutoUpdate() {
+            AppState.settings.autoUpdateEnabled = false;
+            document.getElementById('startUpdateBtn').disabled = false;
+            document.getElementById('stopUpdateBtn').disabled = true;
+            document.getElementById('updateStatusText').textContent = '停止中';
+            document.getElementById('nextUpdateTime').textContent = '--:--';
+            updateConnectionStatus('paused');
+            
+            showNotification('自動更新を停止しました', 'info');
+        }
+
+        function updateNextUpdateTime(interval) {
+            if (!AppState.settings.autoUpdateEnabled) {
+                document.getElementById('nextUpdateTime').textContent = '--:--';
+                return;
+            }
+            
+            const nextUpdate = new Date(Date.now() + interval);
+            const timeString = nextUpdate.toLocaleTimeString('ja-JP', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('nextUpdateTime').textContent = timeString;
         }
 
         async function loadCameraSourcesFromSpreadsheet() {
@@ -873,18 +1043,46 @@
             } catch (error) {
                 console.error('カメラソース読み込みエラー:', error);
                 showNotification('カメラリストの読み込みに失敗: ' + error.message, 'error');
-                showManualInputOption();
+                loadFallbackCameraSources();
             }
         }
 
-        function showManualInputOption() {
-            const select = document.getElementById('cameraSource');
-            select.innerHTML = '<option value="">手動でカメラURLを入力してください</option><option value="manual">手動入力...</option>';
+        function loadFallbackCameraSources() {
+            const fallbackSources = [
+                {
+                    name: '日本の地震速報',
+                    region: '日本',
+                    category: '地震速報',
+                    url: 'https://www.youtube.com/embed/c7_kqMFDE8c',
+                    id: 'fallback_1'
+                },
+                {
+                    name: '世界の地震速報',
+                    region: '世界',
+                    category: '地震速報',
+                    url: 'https://www.youtube.com/embed/rvtygG4n6ew',
+                    id: 'fallback_2'
+                },
+                {
+                    name: 'ウェザーニュース',
+                    region: '日本',
+                    category: 'ニュース',
+                    url: 'https://www.youtube.com/embed/QTVc9l1qjYs',
+                    id: 'fallback_3'
+                }
+            ];
+            
+            AppState.originalCameraSources = fallbackSources;
+            AppState.cameraSources = [...fallbackSources];
+            
+            populateCameraSourceDropdown(fallbackSources);
+            showNotification('フォールバックカメラを読み込みました', 'warning');
         }
 
         function parseCSVCameraSources(csvText) {
             const lines = csvText.split('\n');
             const cameraSources = [];
+            
             
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -987,6 +1185,12 @@
                 select.appendChild(option);
             });
             
+            // 手動入力オプションを追加
+            const manualOption = document.createElement('option');
+            manualOption.value = 'manual';
+            manualOption.textContent = '📝 手動でURLを入力...';
+            select.appendChild(manualOption);
+            
             console.log('カメラドロップダウンに' + sources.length + '件のオプションを追加しました');
         }
 
@@ -1004,8 +1208,6 @@
                 option.textContent = category;
                 select.appendChild(option);
             });
-            
-            console.log('カテゴリフィルターに' + categories.length + '件のオプションを追加しました:', categories);
         }
 
         function populateRegionFilter() {
@@ -1022,14 +1224,12 @@
                 option.textContent = region;
                 select.appendChild(option);
             });
-            
-            console.log('地域フィルターに' + regions.length + '件のオプションを追加しました:', regions);
         }
 
         async function loadRecentEarthquakeData() {
             try {
                 console.log('実際の地震データを取得中...');
-                showNotification('地震データを取得中...', 'info');
+                document.getElementById('earthquakeStatus').textContent = 'データ取得中...';
                 
                 let data = null;
                 let successMethod = '';
@@ -1037,18 +1237,18 @@
                 const methods = [
                     {
                         name: 'CORS Anywhere',
-                        url: 'https://cors-anywhere.herokuapp.com/' + EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=20',
+                        url: 'https://cors-anywhere.herokuapp.com/' + EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=30',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     },
                     {
                         name: 'AllOrigins',
-                        url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=20'),
+                        url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=30'),
                         headers: {},
                         parseResponse: function(response) { return JSON.parse(response.contents); }
                     },
                     {
                         name: 'Direct Access',
-                        url: EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=20',
+                        url: EARTHQUAKE_CONFIG.p2pApiUrl + '?limit=30',
                         headers: { 'Accept': 'application/json' }
                     }
                 ];
@@ -1089,241 +1289,148 @@
                     throw new Error('すべての接続方法が失敗しました');
                 }
                 
+                // 既存の履歴をクリアして更新
                 const historyContainer = document.getElementById('earthquakeHistory');
                 historyContainer.innerHTML = '';
                 
                 let processedCount = 0;
+                let earthquakeCount = 0;
+                
+                // 地震情報のみをフィルタリングして表示
                 data.forEach(function(item) {
                     if (item.code === 551 && item.earthquake) {
                         const earthquake = item.earthquake;
                         const maxIntensity = earthquake.maxScale;
                         const magnitude = earthquake.hypocenter && earthquake.hypocenter.magnitude || '不明';
                         const location = earthquake.hypocenter && earthquake.hypocenter.name || '不明';
+                        const depth = earthquake.hypocenter && earthquake.hypocenter.depth || '不明';
                         const time = new Date(earthquake.time);
                         
                         if (maxIntensity >= 1) {
                             const intensityName = EARTHQUAKE_CONFIG.alertLevels[maxIntensity] && EARTHQUAKE_CONFIG.alertLevels[maxIntensity].name || '震度' + maxIntensity;
-                            addEarthquakeHistory(
-                                intensityName + ' - ' + location + ' (M' + magnitude + ')',
-                                time
-                            );
+                            const info = intensityName + ' - ' + location + ' (M' + magnitude + ', 深さ' + depth + 'km)';
+                            
+                            addEarthquakeHistory(info, time, maxIntensity);
                             processedCount++;
+                            
+                            if (earthquakeCount === 0) {
+                                // 最新の地震情報を表示
+                                document.getElementById('earthquakeStatus').textContent = '最新: ' + intensityName;
+                            }
+                            earthquakeCount++;
                         }
                     }
                 });
 
                 if (processedCount > 0) {
-                    document.getElementById('earthquakeStatus').textContent = '実際データ監視中';
-                    showNotification('実際の地震データ ' + processedCount + '件を読み込みました (' + successMethod + ')', 'success');
+                    updateConnectionStatus('connected');
+                    showNotification('地震データ ' + processedCount + '件を読み込みました', 'success');
                 } else {
                     document.getElementById('earthquakeStatus').textContent = '地震なし(監視中)';
-                    showNotification('現在、最近の地震情報はありません', 'info');
+                    historyContainer.innerHTML = '<div class="empty-state"><span class="icon icon-check"></span><p>最近の地震情報はありません</p></div>';
                 }
 
-                setTimeout(function() {
-                    loadRecentEarthquakeData();
-                }, 3 * 60 * 1000);
+                // 次回更新時刻を更新
+                const interval = parseInt(document.getElementById('earthquakeUpdateInterval').value) * 1000;
+                updateNextUpdateTime(interval);
 
             } catch (error) {
                 console.error('地震データ取得エラー:', error);
                 document.getElementById('earthquakeStatus').textContent = 'データ取得エラー';
+                updateConnectionStatus('error');
                 showNotification('地震データの取得に失敗: ' + error.message, 'error');
-                showManualEarthquakeRefresh();
+                
+                // エラー時のフォールバック表示
+                const historyContainer = document.getElementById('earthquakeHistory');
+                historyContainer.innerHTML = '<div class="history-item"><div class="history-info" style="text-align: center;"><button class="btn" onclick="refreshEarthquakeData()" style="margin: 10px;"><span class="icon icon-refresh"></span> 地震データを再取得</button><p style="font-size: 0.8rem; color: #888; margin-top: 10px;">ネットワーク接続を確認して再試行してください</p></div></div>';
+                
+                // サンプルデータを表示
+                addSampleEarthquakeData();
             }
         }
 
-        function showManualEarthquakeRefresh() {
-            const historyContainer = document.getElementById('earthquakeHistory');
-            historyContainer.innerHTML = '<div class="history-item"><div class="history-info" style="text-align: center;"><button class="btn" onclick="loadRecentEarthquakeData()" style="margin: 10px;"><span class="icon icon-refresh"></span> 地震データを再取得</button><p style="font-size: 0.8rem; color: #888; margin-top: 10px;">ネットワーク接続を確認して再試行してください</p></div></div>';
-        }
-
-        function initEarthquakeWebSocket() {
-            if (earthquakeWebSocket) {
-                earthquakeWebSocket.close();
-            }
-
-            if (window.location.protocol === 'file:') {
-                console.log('ローカル環境での実行を検出、実際APIでフォールバック');
-                document.getElementById('earthquakeStatus').textContent = '実際API監視中';
-                loadRecentEarthquakeData();
-                return;
-            }
-
-            try {
-                console.log('地震速報WebSocketサーバーに接続中...');
-                earthquakeWebSocket = new WebSocket(EARTHQUAKE_CONFIG.p2pWebSocketUrl);
-
-                const connectionTimeout = setTimeout(function() {
-                    if (earthquakeWebSocket.readyState === WebSocket.CONNECTING) {
-                        earthquakeWebSocket.close();
-                        console.log('WebSocket接続タイムアウト、実際APIにフォールバック');
-                        loadRecentEarthquakeData();
-                    }
-                }, 15000);
-
-                earthquakeWebSocket.onopen = function(event) {
-                    clearTimeout(connectionTimeout);
-                    console.log('地震速報WebSocket接続成功');
-                    reconnectAttempts = 0;
-                    document.getElementById('earthquakeStatus').textContent = 'リアルタイム監視中';
-                    showNotification('地震速報システムが開始されました (リアルタイム)', 'success');
-                    loadRecentEarthquakeData();
-                };
-
-                earthquakeWebSocket.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        handleEarthquakeData(data);
-                    } catch (error) {
-                        console.error('地震データ解析エラー:', error);
-                    }
-                };
-
-                earthquakeWebSocket.onclose = function(event) {
-                    clearTimeout(connectionTimeout);
-                    console.log('地震速報WebSocket接続が切断されました:', event.code, event.reason);
-                    document.getElementById('earthquakeStatus').textContent = '接続切断';
-                    
-                    if (reconnectAttempts < EARTHQUAKE_CONFIG.maxReconnectAttempts) {
-                        reconnectAttempts++;
-                        console.log('WebSocket再接続を試行中... (' + reconnectAttempts + '/' + EARTHQUAKE_CONFIG.maxReconnectAttempts + ')');
-                        setTimeout(function() {
-                            initEarthquakeWebSocket();
-                        }, EARTHQUAKE_CONFIG.reconnectInterval);
-                    } else {
-                        showNotification('WebSocket接続に失敗、実際APIで継続', 'warning');
-                        loadRecentEarthquakeData();
-                    }
-                };
-
-                earthquakeWebSocket.onerror = function(error) {
-                    clearTimeout(connectionTimeout);
-                    console.error('地震速報WebSocketエラー:', error);
-                    document.getElementById('earthquakeStatus').textContent = '接続エラー';
-                    loadRecentEarthquakeData();
-                };
-
-            } catch (error) {
-                console.error('地震速報WebSocket初期化エラー:', error);
-                showNotification('WebSocket初期化失敗、実際APIで継続', 'warning');
-                loadRecentEarthquakeData();
-            }
-        }
-
-        function handleEarthquakeData(data) {
-            switch (data.code) {
-                case 551:
-                    processEarthquakeInfo(data);
-                    break;
-                case 552:
-                    processTsunamiInfo(data);
-                    break;
-                case 554:
-                    processEEWInfo(data);
-                    break;
-                case 561:
-                    processUserQuakeInfo(data);
-                    break;
-                default:
-                    console.log('未知の地震データ:', data);
-                    break;
-            }
-        }
-
-        function processEarthquakeInfo(data) {
-            lastEarthquakeData = data;
-            const earthquake = data.earthquake;
-            const maxIntensity = earthquake.maxScale;
-            const magnitude = earthquake.hypocenter && earthquake.hypocenter.magnitude || 'N/A';
-            const location = earthquake.hypocenter && earthquake.hypocenter.name || '不明';
-            const time = new Date(earthquake.time);
-
-            if (maxIntensity >= AppState.settings.minAlertIntensity && AppState.settings.alertEnabled) {
-                const alertLevel = EARTHQUAKE_CONFIG.alertLevels[maxIntensity];
-                if (alertLevel) {
-                    showEarthquakeAlert(
-                        alertLevel.name + ' - ' + location + ' (M' + magnitude + ')',
-                        alertLevel.color,
-                        'earthquake'
-                    );
-                }
-            }
-
-            const intensityName = EARTHQUAKE_CONFIG.alertLevels[maxIntensity] && EARTHQUAKE_CONFIG.alertLevels[maxIntensity].name || '震度' + maxIntensity;
-            addEarthquakeHistory(intensityName + ' - ' + location + ' (M' + magnitude + ')');
-
-            document.getElementById('earthquakeStatus').textContent = '最新: ' + intensityName;
-
-            console.log('地震情報を受信:', {
-                time: time.toLocaleString(),
-                location: location,
-                magnitude: magnitude,
-                maxIntensity: maxIntensity
-            });
-        }
-
-        function processTsunamiInfo(data) {
-            const areas = data.areas || [];
-            let maxGrade = 'None';
+        function addSampleEarthquakeData() {
+            console.log('サンプルの地震データを表示します');
+            const sampleData = [
+                { intensity: 3, location: '福岡県北部', magnitude: 4.2, depth: 10, time: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+                { intensity: 2, location: '熊本県熊本地方', magnitude: 3.5, depth: 12, time: new Date(Date.now() - 5 * 60 * 60 * 1000) },
+                { intensity: 4, location: '宮城県沖', magnitude: 5.1, depth: 50, time: new Date(Date.now() - 12 * 60 * 60 * 1000) },
+                { intensity: 1, location: '千葉県東方沖', magnitude: 3.8, depth: 30, time: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+            ];
             
-            areas.forEach(function(area) {
-                if (area.grade && area.grade !== 'None') {
-                    maxGrade = area.grade;
-                }
+            sampleData.forEach(function(data) {
+                const intensityName = EARTHQUAKE_CONFIG.alertLevels[data.intensity].name;
+                const info = intensityName + ' - ' + data.location + ' (M' + data.magnitude + ', 深さ' + data.depth + 'km) [サンプル]';
+                addEarthquakeHistory(info, data.time, data.intensity);
             });
-
-            if (maxGrade !== 'None') {
-                const tsunamiLevel = EARTHQUAKE_CONFIG.tsunamiLevels[maxGrade];
-                if (tsunamiLevel) {
-                    showEarthquakeAlert(
-                        '津波情報: ' + tsunamiLevel.name,
-                        tsunamiLevel.color,
-                        'tsunami'
-                    );
-                    
-                    addEarthquakeHistory('津波情報: ' + tsunamiLevel.name);
-                }
-            }
-
-            console.log('津波予報を受信:', data);
         }
 
-        function processEEWInfo(data) {
-            const earthquake = data.earthquake;
-            const maxIntensity = earthquake.maxScale;
-            const magnitude = earthquake.hypocenter && earthquake.hypocenter.magnitude || 'N/A';
-            const location = earthquake.hypocenter && earthquake.hypocenter.name || '不明';
-
-            if (AppState.settings.alertEnabled) {
-                showEarthquakeAlert(
-                    '🚨 緊急地震速報 🚨\n予想最大震度: ' + maxIntensity + '\n震源: ' + location + ' (M' + magnitude + ')',
-                    '#ff0000',
-                    'eew'
-                );
+        function addEarthquakeHistory(info, customTime, intensity) {
+            const historyContainer = document.getElementById('earthquakeHistory');
+            
+            // 空の状態メッセージがあれば削除
+            const emptyState = historyContainer.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
             }
+            
+            const time = customTime || new Date();
+            const timeString = time.toLocaleDateString('ja-JP') + ' ' + 
+                             time.toLocaleTimeString('ja-JP', { 
+                                 hour: '2-digit', 
+                                 minute: '2-digit' 
+                             });
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            // 震度に応じて色を変更
+            if (intensity) {
+                const alertLevel = EARTHQUAKE_CONFIG.alertLevels[intensity];
+                if (alertLevel) {
+                    historyItem.style.borderLeft = '3px solid ' + alertLevel.color;
+                    historyItem.style.background = 'rgba(' + parseInt(alertLevel.color.slice(1,3),16) + ',' + 
+                                                   parseInt(alertLevel.color.slice(3,5),16) + ',' + 
+                                                   parseInt(alertLevel.color.slice(5,7),16) + ', 0.1)';
+                }
+            }
+            
+            if (info.includes('🚨')) {
+                historyItem.style.borderLeft = '3px solid #ff0000';
+                historyItem.style.background = 'rgba(255, 0, 0, 0.1)';
+            } else if (info.includes('津波')) {
+                historyItem.style.borderLeft = '3px solid #00bfff';
+                historyItem.style.background = 'rgba(0, 191, 255, 0.1)';
+            }
+            
+            historyItem.innerHTML = '<div class="history-time">' + timeString + '</div><div class="history-info">' + info + '</div>';
+            
+            historyContainer.insertBefore(historyItem, historyContainer.firstChild);
+            
+            // 履歴件数制限
+            const items = historyContainer.querySelectorAll('.history-item');
+            const maxItems = parseInt(document.getElementById('historyCount').value) || 20;
+            if (items.length > maxItems) {
+                for (let i = maxItems; i < items.length; i++) {
+                    items[i].remove();
+                }
+            }
+        }
 
+        function refreshEarthquakeData() {
+            showNotification('地震データを更新中...', 'info');
+            loadRecentEarthquakeData();
+        }
+
+        function testEarthquakeAlert() {
+            showEarthquakeAlert('テスト: 震度5弱 - 東京都23区 (M6.0)', '#dc2626', 'earthquake');
+            
             const voiceEnabled = document.getElementById('voiceEnabled');
             if ('speechSynthesis' in window && voiceEnabled && voiceEnabled.checked) {
-                const utterance = new SpeechSynthesisUtterance('緊急地震速報。最大震度' + maxIntensity + '。震源は' + location + 'です。');
+                const utterance = new SpeechSynthesisUtterance('これはテストアラートです。震度5弱、東京都23区、マグニチュード6.0');
                 utterance.lang = 'ja-JP';
                 speechSynthesis.speak(utterance);
             }
-
-            addEarthquakeHistory('🚨 緊急地震速報: 予想最大震度' + maxIntensity + ' - ' + location + ' (M' + magnitude + ')');
-
-            console.log('緊急地震速報を受信:', data);
-        }
-
-        function processUserQuakeInfo(data) {
-            const count = data.count;
-            const confidence = data.confidence;
-            
-            if (confidence > 0.95 && count > 10) {
-                showNotification('地震感知情報: ' + count + '件の報告', 'warning');
-                addEarthquakeHistory('地震感知情報: ' + count + '件の報告');
-            }
-
-            console.log('地震感知情報を受信:', data);
         }
 
         function showEarthquakeAlert(message, color, type) {
@@ -1377,39 +1484,6 @@
                 .toString(16).slice(1);
         }
 
-        function addEarthquakeHistory(info, customTime) {
-            const historyContainer = document.getElementById('earthquakeHistory');
-            const time = customTime || new Date();
-            const timeString = time.toLocaleDateString('ja-JP') + ' ' + 
-                             time.toLocaleTimeString('ja-JP', { 
-                                 hour: '2-digit', 
-                                 minute: '2-digit' 
-                             });
-            
-            const historyItem = document.createElement('div');
-            historyItem.className = 'history-item';
-            
-            if (info.includes('🚨')) {
-                historyItem.style.borderLeft = '3px solid #ff0000';
-                historyItem.style.background = 'rgba(255, 0, 0, 0.1)';
-            } else if (info.includes('津波')) {
-                historyItem.style.borderLeft = '3px solid #00bfff';
-                historyItem.style.background = 'rgba(0, 191, 255, 0.1)';
-            }
-            
-            historyItem.innerHTML = '<div class="history-time">' + timeString + '</div><div class="history-info">' + info + '</div>';
-            
-            historyContainer.insertBefore(historyItem, historyContainer.firstChild);
-            
-            const items = historyContainer.querySelectorAll('.history-item');
-            const maxItems = AppState.settings.historyCount || 10;
-            if (items.length > maxItems) {
-                for (let i = maxItems; i < items.length; i++) {
-                    items[i].remove();
-                }
-            }
-        }
-
         function startCameraSourceAutoUpdate() {
             setInterval(function() {
                 if (navigator.onLine) {
@@ -1424,8 +1498,12 @@
                 Notification.requestPermission().then(function(permission) {
                     if (permission === 'granted') {
                         showNotification('ブラウザ通知が有効になりました', 'success');
+                    } else {
+                        showNotification('ブラウザ通知が拒否されました', 'warning');
                     }
                 });
+            } else if (Notification.permission === 'granted') {
+                showNotification('ブラウザ通知は既に有効です', 'info');
             }
         }
 
@@ -1457,7 +1535,7 @@
             
             select.addEventListener('change', function() {
                 if (this.value === 'manual') {
-                    const url = prompt('カメラのYouTube URLを入力してください:\n\n例:\n- https://www.youtube.com/watch?v=VIDEO_ID\n- https://youtu.be/VIDEO_ID\n- https://www.youtube.com/embed/VIDEO_ID');
+                    const url = prompt('カメラのYouTube URLを入力してください:\n\n例:\n- https://www.youtube.com/watch?v=VIDEO_ID\n- https://youtu.be/VIDEO_ID\n- https://www.youtube.com/embed/VIDEO_ID\n- https://www.youtube.com/live/VIDEO_ID');
                     
                     if (url && url.trim()) {
                         const cleanUrl = url.trim();
@@ -1468,7 +1546,7 @@
                         option.value = cleanUrl;
                         option.textContent = '手動入力: ' + cleanUrl.substring(0, 50) + '...';
                         option.selected = true;
-                        this.appendChild(option);
+                        this.insertBefore(option, this.lastElementChild);
                     } else {
                         this.value = '';
                     }
@@ -1479,20 +1557,43 @@
         function updateVideoSource(url) {
             if (!url) return;
             
+            showLoadingOverlay();
             const iframe = document.getElementById('videoIframe');
             let embedUrl = url;
             
+            // YouTube URLを埋め込み形式に変換
             if (url.includes('youtube.com/watch?v=')) {
                 const videoId = url.split('v=')[1].split('&')[0];
-                embedUrl = 'https://www.youtube.com/embed/' + videoId;
+                embedUrl = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&mute=1';
             } else if (url.includes('youtu.be/')) {
                 const videoId = url.split('youtu.be/')[1].split('?')[0];
-                embedUrl = 'https://www.youtube.com/embed/' + videoId;
+                embedUrl = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&mute=1';
+            } else if (url.includes('youtube.com/live/')) {
+                const videoId = url.split('live/')[1].split('?')[0];
+                embedUrl = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&mute=1';
+            } else if (url.includes('youtube.com/embed/')) {
+                // 既に埋め込み形式の場合はパラメータを追加
+                if (!url.includes('?')) {
+                    embedUrl = url + '?autoplay=1&mute=1';
+                }
             }
             
             iframe.src = embedUrl;
             AppState.settings.cameraSource = url;
-            saveSettings();
+            document.getElementById('cameraStatus').textContent = '読み込み中...';
+            
+            // iframeの読み込み完了を待つ
+            iframe.onload = function() {
+                hideLoadingOverlay();
+                document.getElementById('cameraStatus').textContent = '正常';
+                saveSettings();
+            };
+            
+            iframe.onerror = function() {
+                hideLoadingOverlay();
+                document.getElementById('cameraStatus').textContent = 'エラー';
+                showNotification('映像の読み込みに失敗しました', 'error');
+            };
         }
 
         function filterCameraSources() {
@@ -1506,40 +1607,51 @@
             });
             
             populateCameraSourceDropdown(filteredSources);
+            showNotification('フィルターを適用しました', 'success');
         }
 
         function showCameraList() {
             const content = document.getElementById('cameraListContent');
             const listItems = document.getElementById('cameraListItems');
+            const toggleBtn = document.getElementById('listToggleBtn');
             
             if (content.style.display === 'none') {
                 content.style.display = 'block';
+                toggleBtn.innerHTML = '<span class="icon icon-eye-slash"></span> 一覧を隠す';
                 listItems.innerHTML = '';
                 
-                AppState.cameraSources.forEach(function(camera) {
-                    const item = document.createElement('div');
-                    item.style.cssText = 'padding: 8px; background: rgba(255,255,255,0.05); margin-bottom: 4px; border-radius: 4px; cursor: pointer;';
-                    item.textContent = camera.name + ' (' + camera.region + ')';
-                    item.onclick = function() {
-                        document.getElementById('cameraSource').value = camera.url;
-                        updateVideoSource(camera.url);
-                    };
-                    listItems.appendChild(item);
-                });
+                if (AppState.cameraSources.length === 0) {
+                    listItems.innerHTML = '<div class="empty-state"><span class="icon icon-video"></span><p>カメラが読み込まれていません</p></div>';
+                } else {
+                    AppState.cameraSources.forEach(function(camera) {
+                        const item = document.createElement('div');
+                        item.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 4px; border-radius: 6px; cursor: pointer; transition: all 0.3s ease;';
+                        item.innerHTML = '<div style="font-weight: 500;">' + camera.name + '</div><div style="font-size: 0.8rem; color: #888; margin-top: 2px;">' + camera.region + ' / ' + camera.category + '</div>';
+                        item.onmouseover = function() {
+                            this.style.background = 'rgba(255,255,255,0.1)';
+                            this.style.transform = 'translateX(5px)';
+                        };
+                        item.onmouseout = function() {
+                            this.style.background = 'rgba(255,255,255,0.05)';
+                            this.style.transform = 'translateX(0)';
+                        };
+                        item.onclick = function() {
+                            document.getElementById('cameraSource').value = camera.url;
+                            updateVideoSource(camera.url);
+                            showNotification(camera.name + ' を選択しました', 'success');
+                        };
+                        listItems.appendChild(item);
+                    });
+                }
             } else {
                 content.style.display = 'none';
+                toggleBtn.innerHTML = '<span class="icon icon-eye"></span> 一覧表示';
             }
         }
 
         function toggleEarthquakeSettings() {
             const panel = document.getElementById('earthquakeSettingsPanel');
             panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function refreshEarthquakeSystem() {
-            showNotification('地震速報システムを更新中...', 'info');
-            initEarthquakeWebSocket();
-            loadRecentEarthquakeData();
         }
 
         function refreshCameraSources() {
@@ -1549,11 +1661,20 @@
         function refreshVideo() {
             const iframe = document.getElementById('videoIframe');
             const currentSrc = iframe.src;
+            
+            if (!currentSrc || currentSrc === 'about:blank') {
+                showNotification('カメラが選択されていません', 'warning');
+                return;
+            }
+            
+            showLoadingOverlay();
             iframe.src = '';
+            
             setTimeout(function() {
                 iframe.src = currentSrc;
+                hideLoadingOverlay();
+                showNotification('映像を更新しました', 'success');
             }, 100);
-            showNotification('映像を更新しました', 'success');
         }
 
         function toggleFullscreen() {
@@ -1571,41 +1692,40 @@
         function applyPreset(preset) {
             switch(preset) {
                 case 'default':
-                    AppState.settings.updateInterval = 5;
-                    AppState.settings.historyCount = 10;
-                    AppState.settings.videoSize = 'auto';
+                    document.getElementById('earthquakeUpdateInterval').value = '60';
+                    document.getElementById('historyCount').value = '20';
+                    document.getElementById('videoSize').value = 'auto';
                     break;
                 case 'monitoring':
-                    AppState.settings.updateInterval = 1;
-                    AppState.settings.historyCount = 20;
-                    AppState.settings.videoSize = '720p';
+                    document.getElementById('earthquakeUpdateInterval').value = '30';
+                    document.getElementById('historyCount').value = '50';
+                    document.getElementById('videoSize').value = '720p';
                     break;
                 case 'mobile':
-                    AppState.settings.updateInterval = 10;
-                    AppState.settings.historyCount = 5;
-                    AppState.settings.videoSize = '360p';
+                    document.getElementById('earthquakeUpdateInterval').value = '180';
+                    document.getElementById('historyCount').value = '10';
+                    document.getElementById('videoSize').value = '360p';
                     break;
                 case 'lowBandwidth':
-                    AppState.settings.updateInterval = 30;
-                    AppState.settings.historyCount = 5;
-                    AppState.settings.videoSize = '360p';
+                    document.getElementById('earthquakeUpdateInterval').value = '300';
+                    document.getElementById('historyCount').value = '10';
+                    document.getElementById('videoSize').value = '360p';
                     break;
             }
-            
-            document.getElementById('updateInterval').value = AppState.settings.updateInterval;
-            document.getElementById('historyCount').value = AppState.settings.historyCount;
-            document.getElementById('videoSize').value = AppState.settings.videoSize;
             
             applySettings();
             showNotification('プリセット「' + preset + '」を適用しました', 'success');
         }
 
         function applySettings() {
-            AppState.settings.updateInterval = parseInt(document.getElementById('updateInterval').value);
+            AppState.settings.earthquakeUpdateInterval = parseInt(document.getElementById('earthquakeUpdateInterval').value);
             AppState.settings.historyCount = parseInt(document.getElementById('historyCount').value);
             AppState.settings.videoSize = document.getElementById('videoSize').value;
             AppState.settings.alertEnabled = document.getElementById('alertEnabled').checked;
             AppState.settings.minAlertIntensity = parseInt(document.getElementById('minAlertIntensity').value);
+            
+            // 地震データ更新間隔を変更
+            startEarthquakeAutoUpdate();
             
             saveSettings();
             showNotification('設定を適用しました', 'success');
@@ -1625,11 +1745,15 @@
                 if (saved) {
                     AppState.settings = JSON.parse(saved);
                     
-                    document.getElementById('updateInterval').value = AppState.settings.updateInterval;
-                    document.getElementById('historyCount').value = AppState.settings.historyCount;
-                    document.getElementById('videoSize').value = AppState.settings.videoSize;
-                    document.getElementById('alertEnabled').checked = AppState.settings.alertEnabled;
+                    document.getElementById('earthquakeUpdateInterval').value = AppState.settings.earthquakeUpdateInterval || 60;
+                    document.getElementById('historyCount').value = AppState.settings.historyCount || 20;
+                    document.getElementById('videoSize').value = AppState.settings.videoSize || 'auto';
+                    document.getElementById('alertEnabled').checked = AppState.settings.alertEnabled !== false;
                     document.getElementById('minAlertIntensity').value = AppState.settings.minAlertIntensity || 3;
+                    
+                    if (AppState.settings.cameraSource) {
+                        updateVideoSource(AppState.settings.cameraSource);
+                    }
                 }
             } catch (e) {
                 console.log('設定の読み込みはローカル環境では利用できません');
@@ -1654,15 +1778,11 @@
                     showNotification('ローカル環境での実行を検出。CORS制限により一部機能が制限されます。', 'warning');
                     
                     setTimeout(function() {
-                        showNotification('ブラウザのCORSポリシーを無効化するか、ウェブサーバーでホストすることを推奨します。', 'info');
-                    }, 5000);
-                    
-                    setTimeout(function() {
                         const alertDiv = document.createElement('div');
-                        alertDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); color: white; padding: 20px; border-radius: 10px; z-index: 1000; max-width: 500px; text-align: center;';
-                        alertDiv.innerHTML = '<h3>ローカル環境での実行について</h3><p style="margin: 15px 0;">CORS制限により外部APIへの接続が制限されています。</p><div style="text-align: left; margin: 15px 0;"><strong>解決方法:</strong><ul style="margin: 10px 0; padding-left: 20px;"><li>Chromeで --disable-web-security オプションを使用</li><li>ローカルWebサーバー（XAMPP、MAMP等）でホスト</li><li>Firebase Hosting、Netlify等にアップロード</li></ul></div><button onclick="this.parentElement.remove()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">了解</button>';
+                        alertDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); color: white; padding: 30px; border-radius: 10px; z-index: 1000; max-width: 500px; text-align: center; border: 2px solid #667eea;';
+                        alertDiv.innerHTML = '<h3 style="margin-bottom: 15px;">ローカル環境での実行について</h3><p style="margin: 15px 0;">CORS制限により外部APIへの接続が制限されています。</p><div style="text-align: left; margin: 20px 0;"><strong>解決方法:</strong><ul style="margin: 10px 0; padding-left: 20px;"><li>Chromeで --disable-web-security オプションを使用</li><li>ローカルWebサーバー（XAMPP、MAMP等）でホスト</li><li>Firebase Hosting、Netlify等にアップロード</li></ul></div><button onclick="this.parentElement.remove()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">了解</button>';
                         document.body.appendChild(alertDiv);
-                    }, 8000);
+                    }, 5000);
                     
                 } else {
                     showNotification('実際の地震情報を監視中。緊急時に備えてください。', 'success');
@@ -1670,6 +1790,11 @@
                         requestNotificationPermission();
                     }, 2000);
                 }
+                
+                // 自動更新を開始
+                setTimeout(function() {
+                    startAutoUpdate();
+                }, 3000);
             }
         }, 2000);
 
@@ -1687,7 +1812,7 @@
             showDebugInfo();
         }, 5000);
 
-        console.log('🌏 GlobalQuake LiveCam v2.1.0 - ローカル対応版 (手動入力機能付き)');
+        console.log('🌏 GlobalQuake LiveCam v2.2.0 - 改善版 (自動更新制御機能付き)');
     </script>
 </body>
 </html>

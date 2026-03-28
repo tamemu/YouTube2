@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>前走車 発進通知・接近警告</title>
+  <link rel="manifest" href="./manifest.json" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(21, 28, 49, 0.95);
+      --panel2: rgba(255,255,255,0.04);
+      --text: #f1f5ff;
+      --muted: #a7b3d1;
+      --ok: #34d399;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --accent: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: linear-gradient(180deg, #09101b 0%, #111827 100%); color: var(--text); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+    .app { width: min(100%, 1100px); margin: 0 auto; padding: 12px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.28);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .header { padding: 14px 16px 8px; }
+    h1 { margin: 0 0 6px; font-size: 1.15rem; }
+    .sub { color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+    @media (min-width: 960px) { .grid-2 { grid-template-columns: 1.22fr 0.78fr; } }
+    .video-wrap { position: relative; background: #000; aspect-ratio: 16/9; border-radius: 16px; overflow: hidden; }
+    video, canvas.overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .status-badge, .badge-right {
+      position: absolute; z-index: 5; top: 10px; padding: 8px 10px; border-radius: 999px;
+      background: rgba(0,0,0,0.56); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(6px); font-weight: 700; font-size: 0.84rem;
+    }
+    .status-badge { left: 10px; }
+    .badge-right { right: 10px; color: #dbeafe; }
+    .status-ok { color: #d1fae5; }
+    .status-warn { color: #fde68a; }
+    .status-danger { color: #fecaca; }
+    .controls { display: grid; gap: 10px; }
+    .buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    button, select {
+      appearance: none; border: none; border-radius: 12px; padding: 12px 14px; font-size: 0.96rem;
+      font-weight: 700; color: white; background: linear-gradient(180deg, #2563eb, #1d4ed8);
+    }
+    button.secondary, select.secondary { background: linear-gradient(180deg, #334155, #1f2937); }
+    button.warn { background: linear-gradient(180deg, #f59e0b, #d97706); }
+    button.install { background: linear-gradient(180deg, #059669, #047857); }
+    button:disabled { opacity: 0.55; }
+    .panel {
+      padding: 12px; background: var(--panel2); border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .row, .checkrow { display: grid; gap: 8px; align-items: center; }
+    .row { grid-template-columns: 1fr auto; }
+    .checkrow { grid-template-columns: auto 1fr auto; }
+    label, .row .title { font-size: 0.93rem; }
+    .value { color: var(--accent); font-weight: 700; min-width: 80px; text-align: right; }
+    input[type="range"] { width: 100%; }
+    input[type="checkbox"] { width: 20px; height: 20px; accent-color: #2563eb; }
+    .kv {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 7px 0;
+      border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.92rem;
+    }
+    .kv:last-child { border-bottom: none; }
+    .k { color: var(--muted); }
+    .v { font-weight: 700; }
+    .tips, .footer-note { padding: 0 12px 12px; color: var(--muted); line-height: 1.55; font-size: 0.9rem; }
+    .pill { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.11); background: rgba(255,255,255,0.08); font-size: 0.8rem; }
+    .small { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="header">
+        <h1>前走車 発進通知・接近警告 WEBアプリ<span class="pill">PWA対応</span></h1>
+        <div class="sub">
+          背面カメラ映像から前走車候補を検出し、<b>近すぎると警告音</b>、<b>停止後に前車が動いたら通知音</b>を鳴らします。<br>
+          実運転の安全判断には使わず、必ず目視優先で使ってください。
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <div class="video-wrap" id="appView">
+            <div id="statusBadge" class="status-badge status-ok">待機中</div>
+            <div id="fpsBadge" class="badge-right">-- fps</div>
+            <video id="video" playsinline autoplay muted></video>
+            <canvas id="overlay" class="overlay"></canvas>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="buttons">
+            <button id="startBtn">開始</button>
+            <button id="stopBtn" class="secondary" disabled>停止</button>
+            <button id="fullscreenBtn" class="secondary">全画面</button>
+            <button id="installBtn" class="install" hidden>インストール</button>
+            <button id="warnTestBtn" class="warn">警告音テスト</button>
+            <button id="goTestBtn" class="secondary">発進通知テスト</button>
+          </div>
+
+          <div class="panel">
+            <div class="row"><label for="detectorMode">検出モード</label><div id="detectorModeText" class="value">安定版</div></div>
+            <select id="detectorMode" class="secondary">
+              <option value="lite">安定版（軽量）</option>
+              <option value="accurate">高精度版（やや重い）</option>
+              <option value="yolo">YOLO実験版（端末依存）</option>
+            </select>
+            <div class="small">YOLO実験版は端末やブラウザによって動かない場合があります。その場合は安定版に戻してください。</div>
+          </div>
+
+          <div class="panel">
+            <div class="checkrow">
+              <input id="autoTune" type="checkbox" checked />
+              <label for="autoTune">感度を自動調整する</label>
+              <div id="autoTuneText" class="value">ON</div>
+            </div>
+            <div class="small">映像の揺れや検出の安定度に応じて、発進検知のしきい値を自動で補正します。</div>
+          </div>
+
+          <div class="panel">
+            <div class="row"><label for="nearThreshold">接近警告のしきい値</label><div id="nearValue" class="value">24%</div></div>
+            <input id="nearThreshold" type="range" min="10" max="45" value="24" step="1" />
+          </div>
+
+          <div class="panel">
+            <div class="row"><label for="moveThreshold">発進検知のしきい値</label><div id="moveValue" class="value">3.5%</div></div>
+            <input id="moveThreshold" type="range" min="1.5" max="10" value="3.5" step="0.1" />
+          </div>
+
+          <div class="panel">
+            <div class="row"><label for="stationarySeconds">停止判定まで</label><div id="stationaryValue" class="value">1.5秒</div></div>
+            <input id="stationarySeconds" type="range" min="0.8" max="4" value="1.5" step="0.1" />
+          </div>
+
+          <div class="panel">
+            <div class="row"><label for="minScore">AI検出信頼度</label><div id="minScoreValue" class="value">55%</div></div>
+            <input id="minScore" type="range" min="35" max="85" value="55" step="1" />
+          </div>
+
+          <div class="panel">
+            <div class="kv"><div class="k">AIモデル状態</div><div class="v" id="modelText">未読み込み</div></div>
+            <div class="kv"><div class="k">前走車候補</div><div class="v" id="targetText">なし</div></div>
+            <div class="kv"><div class="k">接近スコア</div><div class="v" id="nearScoreText">0%</div></div>
+            <div class="kv"><div class="k">移動量</div><div class="v" id="motionText">0%</div></div>
+            <div class="kv"><div class="k">停止状態</div><div class="v" id="stoppedText">いいえ</div></div>
+            <div class="kv"><div class="k">通知状態</div><div class="v" id="goStateText">待機中</div></div>
+            <div class="kv"><div class="k">自動補正後の移動しきい値</div><div class="v" id="adaptiveMoveText">3.5%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tips">
+        使い方: HTTPS で公開して開き、「開始」を押してください。PWAとしてホーム画面に追加すると使いやすくなります。<br>
+        初回のAIモデル読込には通信が必要です。前車が画面中央に入るようにスマホを固定すると安定しやすいです。
+      </div>
+      <div class="footer-note">
+        このアプリは PWA マニフェストと Service Worker を含んでいます。<b>オフラインでも画面自体は開けますが、AIモデルは初回読込時に通信が必要</b>です。YOLO実験版はブラウザ環境差が大きいため、安定しない場合があります。
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js';
+
+    const $ = (id) => document.getElementById(id);
+    const video = $('video');
+    const overlay = $('overlay');
+    const overlayCtx = overlay.getContext('2d');
+    const appView = $('appView');
+
+    const startBtn = $('startBtn');
+    const stopBtn = $('stopBtn');
+    const fullscreenBtn = $('fullscreenBtn');
+    const installBtn = $('installBtn');
+    const warnTestBtn = $('warnTestBtn');
+    const goTestBtn = $('goTestBtn');
+    const detectorMode = $('detectorMode');
+    const autoTune = $('autoTune');
+    const nearThreshold = $('nearThreshold');
+    const moveThreshold = $('moveThreshold');
+    const stationarySeconds = $('stationarySeconds');
+    const minScore = $('minScore');
+
+    const nearValue = $('nearValue');
+    const moveValue = $('moveValue');
+    const stationaryValue = $('stationaryValue');
+    const minScoreValue = $('minScoreValue');
+    const detectorModeText = $('detectorModeText');
+    const autoTuneText = $('autoTuneText');
+    const adaptiveMoveText = $('adaptiveMoveText');
+
+    const statusBadge = $('statusBadge');
+    const fpsBadge = $('fpsBadge');
+    const modelText = $('modelText');
+    const targetText = $('targetText');
+    const nearScoreText = $('nearScoreText');
+    const motionText = $('motionText');
+    const stoppedText = $('stoppedText');
+    const goStateText = $('goStateText');
+
+    let stream = null;
+    let running = false;
+    let rafId = null;
+    let detectionBusy = false;
+    let audioCtx = null;
+    let deferredPrompt = null;
+
+    let cocoModel = null;
+    let yoloDetector = null;
+    let activeDetector = null;
+    let activeMode = 'lite';
+
+    let smoothedNear = 0;
+    let smoothedMotion = 0;
+    let prevTarget = null;
+    let targetLostCount = 0;
+    let stoppedStart = null;
+    let wasStopped = false;
+    let lastWarnTime = 0;
+    let lastGoTime = 0;
+    let ambientMotion = 0;
+    let frameTimes = [];
+
+    const vehicleLabels = new Set(['car', 'truck', 'bus', 'motorcycle']);
+    const yoloVehicleMap = new Set(['car', 'truck', 'bus', 'motorcycle']);
+    const settingsKey = 'drivingAssistPwaSettingsV1';
+
+    function saveSettings() {
+      localStorage.setItem(settingsKey, JSON.stringify({
+        detectorMode: detectorMode.value,
+        autoTune: autoTune.checked,
+        nearThreshold: nearThreshold.value,
+        moveThreshold: moveThreshold.value,
+        stationarySeconds: stationarySeconds.value,
+        minScore: minScore.value
+      }));
+    }
+
+    function loadSettings() {
+      const saved = JSON.parse(localStorage.getItem(settingsKey) || '{}');
+      if (saved.detectorMode) detectorMode.value = saved.detectorMode;
+      if (typeof saved.autoTune === 'boolean') autoTune.checked = saved.autoTune;
+      if (saved.nearThreshold) nearThreshold.value = saved.nearThreshold;
+      if (saved.moveThreshold) moveThreshold.value = saved.moveThreshold;
+      if (saved.stationarySeconds) stationarySeconds.value = saved.stationarySeconds;
+      if (saved.minScore) minScore.value = saved.minScore;
+      updateLabels();
+    }
+
+    function updateLabels() {
+      nearValue.textContent = Number(nearThreshold.value).toFixed(0) + '%';
+      moveValue.textContent = Number(moveThreshold.value).toFixed(1) + '%';
+      stationaryValue.textContent = Number(stationarySeconds.value).toFixed(1) + '秒';
+      minScoreValue.textContent = Number(minScore.value).toFixed(0) + '%';
+      detectorModeText.textContent = detectorMode.options[detectorMode.selectedIndex].text.replace('（軽量）','').replace('（やや重い）','').replace('（端末依存）','');
+      autoTuneText.textContent = autoTune.checked ? 'ON' : 'OFF';
+      saveSettings();
+    }
+
+    [detectorMode, autoTune, nearThreshold, moveThreshold, stationarySeconds, minScore].forEach(el => el.addEventListener('input', updateLabels));
+    loadSettings();
+
+    function setStatus(text, mode = 'ok') {
+      statusBadge.textContent = text;
+      statusBadge.className = 'status-badge ' + (mode === 'danger' ? 'status-danger' : mode === 'warn' ? 'status-warn' : 'status-ok');
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function beep(freq = 880, duration = 0.12, type = 'sine', gainValue = 0.05, startOffset = 0) {
+      ensureAudio();
+      const t0 = audioCtx.currentTime + startOffset;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(gainValue, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    }
+
+    function playWarnSound() {
+      beep(900, 0.10, 'square', 0.055, 0);
+      beep(900, 0.10, 'square', 0.055, 0.14);
+      beep(900, 0.10, 'square', 0.055, 0.28);
+    }
+
+    function playGoSound() {
+      beep(740, 0.10, 'sine', 0.05, 0);
+      beep(1040, 0.16, 'sine', 0.05, 0.14);
+    }
+
+    warnTestBtn.addEventListener('click', playWarnSound);
+    goTestBtn.addEventListener('click', playGoSound);
+    startBtn.addEventListener('click', startAll);
+    stopBtn.addEventListener('click', stopAll);
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    detectorMode.addEventListener('change', async () => {
+      saveSettings();
+      if (running) {
+        await switchDetector(detectorMode.value);
+      }
+    });
+
+    window.addEventListener('resize', resizeOverlay);
+    window.addEventListener('beforeunload', stopAll);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.hidden = false;
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.hidden = true;
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else if (appView.requestFullscreen) {
+          await appView.requestFullscreen();
+        }
+      } catch (err) {
+        console.warn('fullscreen failed', err);
+      }
+    }
+
+    async function createCocoDetector(base) {
+      const model = await cocoSsd.load({ base });
+      return async function detectWithCoco() {
+        const preds = await model.detect(video, undefined, Number(minScore.value) / 100);
+        return (preds || [])
+          .filter(p => vehicleLabels.has(p.class) && p.score >= Number(minScore.value) / 100)
+          .map(p => ({
+            class: p.class,
+            score: p.score,
+            bbox: p.bbox
+          }));
+      };
+    }
+
+    async function createYoloDetector() {
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      const device = (navigator.gpu || typeof GPUBuffer !== 'undefined') ? 'webgpu' : 'wasm';
+      const detector = await pipeline('object-detection', 'webnn/yolov8n', { device });
+      return async function detectWithYolo() {
+        const out = await detector(video, {
+          threshold: Number(minScore.value) / 100,
+          percentage: true
+        });
+        return (out || [])
+          .map(item => {
+            const label = String(item.label || '').toLowerCase();
+            if (!yoloVehicleMap.has(label)) return null;
+            const box = item.box || {};
+            let x = box.xmin ?? box.x ?? 0;
+            let y = box.ymin ?? box.y ?? 0;
+            let w = (box.xmax != null && box.xmin != null) ? box.xmax - box.xmin : (box.width ?? 0);
+            let h = (box.ymax != null && box.ymin != null) ? box.ymax - box.ymin : (box.height ?? 0);
+            if (w <= 1 && h <= 1) {
+              x *= video.videoWidth;
+              y *= video.videoHeight;
+              w *= video.videoWidth;
+              h *= video.videoHeight;
+            }
+            return { class: label, score: Number(item.score || 0), bbox: [x, y, w, h] };
+          })
+          .filter(Boolean);
+      };
+    }
+
+    async function loadDetector(mode) {
+      modelText.textContent = '読込中...';
+      setStatus('AIモデル読込中', 'warn');
+      if (mode === 'lite') {
+        activeDetector = await createCocoDetector('lite_mobilenet_v2');
+        activeMode = mode;
+        modelText.textContent = '安定版 読込完了';
+        return;
+      }
+      if (mode === 'accurate') {
+        activeDetector = await createCocoDetector('mobilenet_v2');
+        activeMode = mode;
+        modelText.textContent = '高精度版 読込完了';
+        return;
+      }
+      if (mode === 'yolo') {
+        try {
+          activeDetector = await createYoloDetector();
+          activeMode = mode;
+          modelText.textContent = 'YOLO実験版 読込完了';
+          return;
+        } catch (err) {
+          console.error(err);
+          activeDetector = await createCocoDetector('mobilenet_v2');
+          activeMode = 'accurate';
+          detectorMode.value = 'accurate';
+          updateLabels();
+          modelText.textContent = 'YOLO失敗 → 高精度版に自動切替';
+          setStatus('YOLO読込失敗・高精度版へ切替', 'warn');
+        }
+      }
+    }
+
+    async function switchDetector(mode) {
+      detectionBusy = true;
+      try {
+        await loadDetector(mode);
+      } finally {
+        detectionBusy = false;
+      }
+    }
+
+    async function startCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      video.srcObject = stream;
+      await video.play();
+      resizeOverlay();
+    }
+
+    async function startAll() {
+      if (running) return;
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+        alert('このブラウザはカメラ取得に対応していません。');
+        return;
+      }
+      try {
+        ensureAudio();
+        startBtn.disabled = true;
+        await loadDetector(detectorMode.value);
+        await startCamera();
+        running = true;
+        resetTrackingState();
+        stopBtn.disabled = false;
+        setStatus('監視中', 'ok');
+        loop();
+      } catch (err) {
+        console.error(err);
+        alert('開始できませんでした。HTTPSで開いているか、通信環境とカメラ権限を確認してください。');
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        setStatus('開始失敗', 'danger');
+      }
+    }
+
+    function resetTrackingState() {
+      smoothedNear = 0;
+      smoothedMotion = 0;
+      prevTarget = null;
+      targetLostCount = 0;
+      stoppedStart = null;
+      wasStopped = false;
+      lastWarnTime = 0;
+      lastGoTime = 0;
+      ambientMotion = 0;
+      frameTimes = [];
+      adaptiveMoveText.textContent = Number(moveThreshold.value).toFixed(1) + '%';
+    }
+
+    function stopAll() {
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      detectionBusy = false;
+      targetText.textContent = 'なし';
+      nearScoreText.textContent = '0%';
+      motionText.textContent = '0%';
+      stoppedText.textContent = 'いいえ';
+      goStateText.textContent = '待機中';
+      fpsBadge.textContent = '-- fps';
+      setStatus('停止中', 'ok');
+    }
+
+    function resizeOverlay() {
+      const rect = overlay.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      overlay.width = Math.round(rect.width * ratio);
+      overlay.height = Math.round(rect.height * ratio);
+      overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
+      overlayCtx.scale(ratio, ratio);
+    }
+
+    function loop() {
+      if (!running) return;
+      if (!detectionBusy) detectFrame();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    async function detectFrame() {
+      if (!video.videoWidth || !video.videoHeight || !activeDetector) return;
+      detectionBusy = true;
+      const t0 = performance.now();
+      try {
+        const preds = await activeDetector();
+        const t1 = performance.now();
+        updateFps(t1);
+        handlePredictions(preds || []);
+      } catch (err) {
+        console.error(err);
+        setStatus('AI推論エラー', 'danger');
+      } finally {
+        detectionBusy = false;
+      }
+    }
+
+    function updateFps(now) {
+      frameTimes.push(now);
+      while (frameTimes.length && now - frameTimes[0] > 1000) frameTimes.shift();
+      fpsBadge.textContent = `${frameTimes.length} fps`;
+    }
+
+    function handlePredictions(preds) {
+      const now = performance.now();
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const centerX = vw / 2;
+      const centerBiasW = vw * 0.42;
+      const horizonY = vh * 0.18;
+
+      const vehicles = preds
+        .map(p => {
+          const [x, y, w, h] = p.bbox;
+          const cx = x + w / 2;
+          const cy = y + h / 2;
+          const areaPct = (w * h) / (vw * vh) * 100;
+          const centerPenalty = Math.abs(cx - centerX) / centerBiasW;
+          const bottomBias = (y + h) / vh;
+          const sizeBias = Math.min(1, areaPct / 18);
+          const rankScore = (1 - Math.min(1.5, centerPenalty)) * 0.55 + bottomBias * 0.25 + sizeBias * 0.2 + p.score * 0.2;
+          return { ...p, x, y, w, h, cx, cy, areaPct, rankScore };
+        })
+        .filter(v => v.cy > horizonY)
+        .sort((a, b) => b.rankScore - a.rankScore);
+
+      let target = vehicles[0] || null;
+      if (!target && prevTarget && targetLostCount < 8) {
+        targetLostCount += 1;
+        target = { ...prevTarget, stale: true };
+      } else if (target) {
+        targetLostCount = 0;
+      }
+
+      let nearScore = 0;
+      let movementPct = 0;
+      let launchDetected = false;
+      let nearDetected = false;
+      let stoppedEnough = false;
+
+      if (target) {
+        nearScore = computeNearScore(target, vw, vh);
+        movementPct = computeMovement(target, prevTarget, vw, vh);
+
+        smoothedNear = smoothedNear * 0.75 + nearScore * 0.25;
+        smoothedMotion = smoothedMotion * 0.68 + movementPct * 0.32;
+        ambientMotion = ambientMotion * 0.92 + smoothedMotion * 0.08;
+
+        const adaptiveMoveTh = getAdaptiveMoveThreshold();
+        const nearTh = Number(nearThreshold.value);
+        const stationaryMs = Number(stationarySeconds.value) * 1000;
+        const isStill = smoothedMotion < adaptiveMoveTh;
+
+        if (isStill) {
+          if (!stoppedStart) stoppedStart = now;
+        } else {
+          if (!target.stale) stoppedStart = null;
+          wasStopped = false;
+        }
+
+        stoppedEnough = !!stoppedStart && (now - stoppedStart >= stationaryMs);
+        if (stoppedEnough) wasStopped = true;
+
+        launchDetected = wasStopped && smoothedMotion > adaptiveMoveTh * 1.85 && !target.stale;
+        nearDetected = smoothedNear > nearTh;
+
+        if (nearDetected && now - lastWarnTime > 1800) {
+          playWarnSound();
+          lastWarnTime = now;
+        }
+        if (launchDetected && now - lastGoTime > 2200) {
+          playGoSound();
+          lastGoTime = now;
+          wasStopped = false;
+          stoppedStart = null;
+        }
+
+        prevTarget = { x: target.x, y: target.y, w: target.w, h: target.h, cx: target.cx, cy: target.cy, class: target.class, score: target.score };
+      } else {
+        smoothedNear *= 0.88;
+        smoothedMotion *= 0.72;
+        ambientMotion *= 0.94;
+        prevTarget = null;
+        stoppedStart = null;
+        wasStopped = false;
+      }
+
+      drawOverlay(vehicles, target, nearDetected, launchDetected, vw, vh);
+      targetText.textContent = target ? `${labelJa(target.class)} ${Math.round(target.score * 100)}%${target.stale ? ' (保持)' : ''}` : 'なし';
+      nearScoreText.textContent = smoothedNear.toFixed(1) + '%';
+      motionText.textContent = smoothedMotion.toFixed(1) + '%';
+      stoppedText.textContent = stoppedEnough ? 'はい' : 'いいえ';
+      goStateText.textContent = launchDetected ? '前車発進を検知' : stoppedEnough ? '停止監視中' : '待機中';
+
+      if (launchDetected) setStatus('前車が動きました', 'ok');
+      else if (nearDetected) setStatus('近すぎる可能性', 'danger');
+      else if (stoppedEnough) setStatus('前車停止を監視中', 'warn');
+      else if (target) setStatus('前走車候補を追跡中', 'ok');
+      else setStatus('前走車候補なし', 'warn');
+    }
+
+    function getAdaptiveMoveThreshold() {
+      const base = Number(moveThreshold.value);
+      if (!autoTune.checked) {
+        adaptiveMoveText.textContent = base.toFixed(1) + '%';
+        return base;
+      }
+      const adjusted = Math.max(1.5, Math.min(10, base + ambientMotion * 0.45));
+      adaptiveMoveText.textContent = adjusted.toFixed(1) + '%';
+      return adjusted;
+    }
+
+    function computeNearScore(target, vw, vh) {
+      const areaPct = (target.w * target.h) / (vw * vh) * 100;
+      const boxBottomPct = ((target.y + target.h) / vh) * 100;
+      const centered = 1 - Math.min(1, Math.abs(target.cx - vw / 2) / (vw * 0.35));
+      let score = areaPct * 1.7 + Math.max(0, boxBottomPct - 45) * 0.45 + centered * 16;
+      if (target.class === 'truck' || target.class === 'bus') score += 3;
+      return Math.max(0, Math.min(100, score));
+    }
+
+    function computeMovement(target, prev, vw, vh) {
+      if (!target || !prev) return 0;
+      const dx = Math.abs(target.cx - prev.cx) / vw * 100;
+      const dy = Math.abs(target.cy - prev.cy) / vh * 100;
+      const dw = Math.abs(target.w - prev.w) / vw * 100;
+      const dh = Math.abs(target.h - prev.h) / vh * 100;
+      return dx * 0.7 + dy * 1.1 + dw * 1.8 + dh * 2.2;
+    }
+
+    function drawOverlay(vehicles, target, nearDetected, launchDetected, vw, vh) {
+      const w = overlay.clientWidth;
+      const h = overlay.clientHeight;
+      overlayCtx.clearRect(0, 0, w, h);
+      if (!w || !h) return;
+
+      const sx = w / vw;
+      const sy = h / vh;
+
+      overlayCtx.strokeStyle = 'rgba(255,255,255,0.18)';
+      overlayCtx.lineWidth = 1;
+      overlayCtx.beginPath();
+      overlayCtx.moveTo(w / 2, h * 0.1);
+      overlayCtx.lineTo(w / 2, h * 0.92);
+      overlayCtx.stroke();
+
+      overlayCtx.strokeStyle = 'rgba(96,165,250,0.25)';
+      overlayCtx.strokeRect(w * 0.29, h * 0.18, w * 0.42, h * 0.68);
+
+      vehicles.forEach(v => {
+        const isTarget = target && Math.abs(v.cx - target.cx) < 1 && Math.abs(v.cy - target.cy) < 1 && Math.abs(v.w - target.w) < 1;
+        overlayCtx.strokeStyle = isTarget
+          ? (nearDetected ? 'rgba(239,68,68,0.98)' : launchDetected ? 'rgba(45,212,191,0.98)' : 'rgba(250,204,21,0.98)')
+          : 'rgba(148,163,184,0.55)';
+        overlayCtx.lineWidth = isTarget ? 4 : 2;
+        overlayCtx.setLineDash(isTarget ? [] : [6, 4]);
+        overlayCtx.strokeRect(v.x * sx, v.y * sy, v.w * sx, v.h * sy);
+        overlayCtx.setLineDash([]);
+        overlayCtx.fillStyle = isTarget ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0.42)';
+        const label = `${labelJa(v.class)} ${Math.round(v.score * 100)}%`;
+        const tx = v.x * sx;
+        const ty = Math.max(20, v.y * sy - 22);
+        overlayCtx.fillRect(tx, ty - 16, Math.min(150, Math.max(80, v.w * sx)), 18);
+        overlayCtx.fillStyle = '#fff';
+        overlayCtx.font = 'bold 12px system-ui';
+        overlayCtx.fillText(label, tx + 4, ty - 3);
+      });
+
+      if (target) {
+        overlayCtx.fillStyle = 'rgba(0,0,0,0.48)';
+        overlayCtx.fillRect(10, h - 78, 320, 66);
+        overlayCtx.fillStyle = '#fff';
+        overlayCtx.font = 'bold 14px system-ui';
+        overlayCtx.fillText('前車候補: ' + labelJa(target.class), 18, h - 50);
+        overlayCtx.fillText('接近: ' + smoothedNear.toFixed(1) + '%', 18, h - 30);
+        overlayCtx.fillText('移動: ' + smoothedMotion.toFixed(1) + '%', 170, h - 30);
+      }
+    }
+
+    function labelJa(cls) {
+      return ({ car: '車', truck: 'トラック', bus: 'バス', motorcycle: 'バイク' })[cls] || cls;
+    }
+  </script>
+</body>
+</html>
